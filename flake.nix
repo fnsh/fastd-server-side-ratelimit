@@ -61,7 +61,7 @@
             {
               bandwith.min.download = cfg.minDownload;
               bandwith.min.upload = cfg.minUpload;
-              shaper_script = toString cfg.shaperScript;
+              shaper_script = cfg.shaperScript;
             }
             // lib.optionalAttrs (cfg.maxDownload != null || cfg.maxUpload != null) {
               bandwith.max = lib.optionalAttrs (cfg.maxDownload != null) {
@@ -130,8 +130,8 @@
             };
 
             shaperScript = lib.mkOption {
-              type = lib.types.package;
-              default = self.packages.${pkgs.system}.apply-shaper;
+              type = lib.types.str;
+              default = self.packages.${pkgs.system}.apply-shaper + "/bin/fssrl-apply-shaper";
               description = "Executable used to apply the shaper settings.";
             };
           };
