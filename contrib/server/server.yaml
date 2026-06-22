@@ -1,0 +1,5 @@
+bandwith:
+  min:
+    download: 12000
+    upload: 6000
+shaper_script: /home/dbauer/git/freifunk/fastd-server-side-ratelimit/contrib/apply-shaper.sh

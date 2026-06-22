@@ -1,0 +1,47 @@
+#!/bin/sh /etc/rc.common
+
+USE_PROCD=1
+START=95
+STOP=10
+
+PROG=/usr/sbin/fssrl-client
+
+start_instance() {
+	local section="$1"
+	local enabled interface script downstream_min downstream_max upstream_min upstream_max target subtarget
+
+	config_get_bool enabled "$section" enabled 0
+	[ "$enabled" -eq 1 ] || return 0
+
+	config_get interface "$section" interface "mesh-vpn"
+	config_get script "$section" script "/usr/share/fssrl/apply-rate-limit.sh"
+	config_get downstream_min "$section" minimum_downstream "1000"
+	config_get downstream_max "$section" maximum_downstream "10000"
+	config_get upstream_min "$section" minimum_upstream "500"
+	config_get upstream_max "$section" maximum_upstream "5000"
+	config_get target "$section" target ""
+	config_get subtarget "$section" subtarget ""
+
+	procd_open_instance "$section"
+	procd_set_param command "$PROG" --interface "$interface" \
+		--script "$script" \
+		--downstream-min "$downstream_min" \
+		--downstream-max "$downstream_max" \
+		--upstream-min "$upstream_min" \
+		--upstream-max "$upstream_max" \
+		--target "$target" \
+		--subtarget "$subtarget"
+	procd_set_param respawn 3600 5 5
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	procd_close_instance
+}
+
+start_service() {
+	config_load fssrl
+	config_foreach start_instance fssrl
+}
+
+service_triggers() {
+	procd_add_reload_trigger fssrl
+}
