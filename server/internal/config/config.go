@@ -8,8 +8,10 @@ import (
 )
 
 type Config struct {
-	Bandwith     BandwithConfig `yaml:"bandwith"`
-	ShaperScript string         `yaml:"shaper_script"`
+	Bandwith        BandwithConfig `yaml:"bandwith"`
+	ShaperScript    string         `yaml:"shaper_script"`
+	InterfacePrefix string         `yaml:"interface_prefix,omitempty"`
+	InterfaceSuffix string         `yaml:"interface_suffix,omitempty"`
 }
 
 type BandwithConfig struct {

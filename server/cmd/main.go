@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"strings"
 	"time"
 
 	"fastd-server-side-ratelimit/internal/config"
@@ -50,13 +51,13 @@ func main() {
 		ShaperScript:      cfg.ShaperScript,
 	}
 
-	err = runServer()
+	err = runServer(cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
-func runServer() error {
+func runServer(cfg config.Config) error {
 	conn, err := openServerSocket()
 	if err != nil {
 		return err
@@ -70,7 +71,7 @@ func runServer() error {
 
 	buffer := make([]byte, messageSize)
 	for {
-		n, cm, src, err := pconn.ReadFrom(buffer)
+		n, cm, _, err := pconn.ReadFrom(buffer)
 		if err != nil {
 			return err
 		}
@@ -80,24 +81,22 @@ func runServer() error {
 			continue
 		}
 
-		// Determine the interface zone from the received control message (if available)
-		var dst *net.UDPAddr
-		switch a := src.(type) {
-		case *net.UDPAddr:
-			dst = &net.UDPAddr{IP: a.IP, Port: a.Port, Zone: a.Zone}
-		default:
-			// unexpected addr type, try to format via String()
+		if cm == nil {
 			continue
 		}
 
-		if cm != nil {
-			ifi, err := net.InterfaceByIndex(cm.IfIndex)
-			if err == nil {
-				dst.Zone = ifi.Name
-				handleMesage(message, ifi, pconn)
-			}
+		ifi, err := net.InterfaceByIndex(cm.IfIndex)
+		if err != nil {
+			continue
 		}
 
+		if cfg.InterfacePrefix != "" && !strings.HasPrefix(ifi.Name, cfg.InterfacePrefix) {
+			continue
+		}
+		if cfg.InterfaceSuffix != "" && !strings.HasSuffix(ifi.Name, cfg.InterfaceSuffix) {
+			continue
+		}
+		handleMesage(message, ifi, pconn)
 	}
 }
 
