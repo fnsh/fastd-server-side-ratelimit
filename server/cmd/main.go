@@ -117,14 +117,10 @@ func sendResponse(message protocol.Message, ifname string, pconn *ipv6.PacketCon
 		return fmt.Errorf("failed to send response: %v", err)
 	}
 
-	log.Printf("Sent response to [%s]:%d on interface %s", clientAddress, protocolPort+1, ifname)
-
 	return nil
 }
 
 func handleMesage(message protocol.Message, ifi *net.Interface, pconn *ipv6.PacketConn) error {
-	log.Printf("Received message: Seq=%d, Interface=%s content=%v", message.SequenceNumber, ifi.Name, message.String())
-
 	// ToDo: Cleanup somewhere else
 	// rateLimiter.Cleanup()
 
