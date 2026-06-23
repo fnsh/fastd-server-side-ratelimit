@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdint.h>
+#include <sys/wait.h>
 
 #include <arpa/inet.h>
 
