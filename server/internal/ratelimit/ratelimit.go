@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"fastd-server-side-ratelimit/internal/config"
 	"fastd-server-side-ratelimit/internal/protocol"
 )
 
@@ -236,6 +237,8 @@ func (s RateLimiterInterfaceState) UpdateSettings() RateLimiterInterfaceState {
 
 type RateLimiter struct {
 	mu sync.Mutex
+
+	TargetLimits map[string]config.TargetRateLimit
 
 	// state holds the last 15 Minutes of messages per client, indexed by the interface name
 	state             map[string]RateLimiterInterfaceState
