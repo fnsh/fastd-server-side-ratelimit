@@ -40,7 +40,7 @@ func main() {
 	flag.Parse()
 	cfg, err := config.Load(*s)
 	if err != nil {
-		log.Fatal("failed to load config: %v", err)
+		log.Fatalf("failed to load config %s", err)
 	}
 
 	rateLimiter = ratelimit.RateLimiter{
