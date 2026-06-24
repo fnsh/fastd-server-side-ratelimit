@@ -1,8 +1,8 @@
 package ratelimit
 
 import (
+	"bytes"
 	"fmt"
-	"log"
 	"os/exec"
 	"sync"
 	"time"
@@ -24,6 +24,14 @@ type RateLimiterMessage struct {
 	Timestamp time.Time
 }
 
+type RateLimiterInterfaceLimits struct {
+	MinDownstreamRate uint32
+	MinUpstreamRate   uint32
+
+	MaxDownstreamRate uint32
+	MaxUpstreamRate   uint32
+}
+
 type RateLimiterInterfaceSettings struct {
 	DownstreamRate uint32
 	UpstreamRate   uint32
@@ -42,6 +50,9 @@ type RateLimiterInterfaceState struct {
 
 	Settings RateLimiterInterfaceSettings
 
+	LocalLimits  RateLimiterInterfaceLimits
+	ClientLimits RateLimiterInterfaceLimits
+
 	LastUpdateTime           time.Time
 	LastUpdateSequenceNumber uint32
 
@@ -52,7 +63,7 @@ type RateLimiterInterfaceState struct {
 	LastRateReduction map[RateLimitEventType]time.Time
 }
 
-func (s RateLimiterInterfaceState) CleanupMessages(threshold time.Time) {
+func (s *RateLimiterInterfaceState) CleanupMessages(threshold time.Time) {
 	var cleanedFromClient []RateLimiterMessage
 	for _, msg := range s.FromClient {
 		if msg.Timestamp.After(threshold) {
@@ -110,7 +121,40 @@ func (s RateLimiterInterfaceState) getDefaultSettings(target string, subtarget s
 		}
 	}
 
-	return nil, targetDefaultMapping["default"]["default"]
+	return fmt.Errorf("no default settings found for target %q and subtarget %q", target, subtarget), RateLimiterInterfaceSettings{}
+}
+
+func (s RateLimiterInterfaceState) MatchTargetLimit(targetSettings []config.TargetRateLimit, target string, subtarget string) (error, config.TargetRateLimit) {
+	for _, ts := range targetSettings {
+		if ts.Target == target {
+			if ts.Subtarget == "" || ts.Subtarget == subtarget {
+				return nil, ts
+			}
+		}
+	}
+
+	return fmt.Errorf("no target rate limit found for target %q and subtarget %q", target, subtarget), config.TargetRateLimit{}
+}
+func (s RateLimiterInterfaceState) GetTargetRateLimit(targetSettings []config.TargetRateLimit) (error, config.TargetRateLimit) {
+	target, subtarget := s.GetTargetAndSubtarget()
+
+	// Try with target and subtarget first, then fallback to target only, then fallback to default
+	err, targetLimit := s.MatchTargetLimit(targetSettings, target, subtarget)
+	if err == nil {
+		return nil, targetLimit
+	}
+
+	err, targetLimit = s.MatchTargetLimit(targetSettings, target, "")
+	if err == nil {
+		return nil, targetLimit
+	}
+
+	err, targetLimit = s.MatchTargetLimit(targetSettings, "", "")
+	if err == nil {
+		return nil, targetLimit
+	}
+
+	return fmt.Errorf("no target rate limit found for target %q and subtarget %q", target, subtarget), config.TargetRateLimit{}
 }
 
 func (s RateLimiterInterfaceState) updateRateAbsolute(rateDown int32, rateUp int32, reason RateLimitEventType) (error, RateLimiterInterfaceState) {
@@ -164,7 +208,41 @@ func (s RateLimiterInterfaceState) updateRateRelative(percentageDown float64, pe
 	return s.updateRateAbsolute(absoluteDiffDown, absoluteDiffUp, reason)
 }
 
-func (s RateLimiterInterfaceState) UpdateSettings() RateLimiterInterfaceState {
+func (s *RateLimiterInterfaceState) UpdateClientSignaledRates() error {
+	if len(s.FromClient) == 0 {
+		return fmt.Errorf("no client messages to update rates from")
+	}
+
+	latestMessage := s.FromClient[len(s.FromClient)-1].Message
+
+	/* Update Minima and Maxima based on latest client message */
+	if latestMessage.DownstreamMin != 0 {
+		s.ClientLimits.MinDownstreamRate = latestMessage.DownstreamMin
+	}
+	if latestMessage.UpstreamMin != 0 {
+		s.ClientLimits.MinUpstreamRate = latestMessage.UpstreamMin
+	}
+	if latestMessage.DownstreamMax != 0 {
+		s.ClientLimits.MaxDownstreamRate = latestMessage.DownstreamMax
+	}
+	if latestMessage.UpstreamMax != 0 {
+		s.ClientLimits.MaxUpstreamRate = latestMessage.UpstreamMax
+	}
+
+	return nil
+}
+
+func (s RateLimiterInterfaceState) GetTargetAndSubtarget() (string, string) {
+	if len(s.FromClient) == 0 {
+		return "", ""
+	}
+	latestMessage := s.FromClient[len(s.FromClient)-1].Message
+	target := string(bytes.TrimRight(latestMessage.MachineInformation.Target[:], "\x00"))
+	subtarget := string(bytes.TrimRight(latestMessage.MachineInformation.Subtarget[:], "\x00"))
+	return target, subtarget
+}
+
+func (s RateLimiterInterfaceState) UpdateSettings(targetSettings []config.TargetRateLimit) RateLimiterInterfaceState {
 	s.LastUpdateTime = time.Now()
 	/* Get latest client message to determine target and subtarget. */
 	if len(s.FromClient) == 0 {
@@ -172,66 +250,53 @@ func (s RateLimiterInterfaceState) UpdateSettings() RateLimiterInterfaceState {
 	}
 	latestMessage := s.FromClient[len(s.FromClient)-1].Message
 
-	/* Update Minima and Maxima based on latest client message */
-	if latestMessage.DownstreamMin != 0 {
-		s.Settings.MinDownstreamRate = latestMessage.DownstreamMin
-	}
-	if latestMessage.UpstreamMin != 0 {
-		s.Settings.MinUpstreamRate = latestMessage.UpstreamMin
-	}
-	if latestMessage.DownstreamMax != 0 {
-		s.Settings.MaxDownstreamRate = latestMessage.DownstreamMax
-	}
-	if latestMessage.UpstreamMax != 0 {
-		s.Settings.MaxUpstreamRate = latestMessage.UpstreamMax
+	/* Update Client Signaled Rates to set Min/Max values */
+	s.UpdateClientSignaledRates()
+
+	/* Update Local Limits based on target/subtarget settings */
+	targetErr, targetLimit := s.GetTargetRateLimit(targetSettings)
+	if targetErr == nil {
+		s.LocalLimits.MinDownstreamRate = targetLimit.MinDownstreamRate
+		s.LocalLimits.MaxDownstreamRate = targetLimit.MaxDownstreamRate
+		s.LocalLimits.MinUpstreamRate = targetLimit.MinUpstreamRate
+		s.LocalLimits.MaxUpstreamRate = targetLimit.MaxUpstreamRate
 	}
 
 	s.LastUpdateSequenceNumber = latestMessage.SequenceNumber
 
-	target := string(latestMessage.MachineInformation.Target[:])
-	subtarget := string(latestMessage.MachineInformation.Subtarget[:])
-	_, newSettings := s.getDefaultSettings(target, subtarget)
-
 	/* Determine starting point. */
 	if s.Settings.DownstreamRate == 0 && s.Settings.UpstreamRate == 0 {
-		/* Check if settings are within minima and maxima. */
-		if latestMessage.DownstreamMin != 0 && newSettings.DownstreamRate < latestMessage.DownstreamMin {
-			newSettings.DownstreamRate = latestMessage.DownstreamMin
-		} else if latestMessage.DownstreamMax != 0 && newSettings.DownstreamRate > latestMessage.DownstreamMax {
-			newSettings.DownstreamRate = latestMessage.DownstreamMax
+		/* By default, use the target/subtarget defaults if available, otherwise use the client signaled rates. */
+		if targetErr == nil {
+			s.Settings.DownstreamRate = targetLimit.InitialDownstreamRate
+			s.Settings.UpstreamRate = targetLimit.InitialUpstreamRate
 		}
 
-		if latestMessage.UpstreamMin != 0 && newSettings.UpstreamRate < latestMessage.UpstreamMin {
-			newSettings.UpstreamRate = latestMessage.UpstreamMin
-		} else if latestMessage.UpstreamMax != 0 && newSettings.UpstreamRate > latestMessage.UpstreamMax {
-			newSettings.UpstreamRate = latestMessage.UpstreamMax
+		/* Check if client has upper limits set, and if so, use them as starting point. */
+		if s.ClientLimits.MaxDownstreamRate > 0 {
+			s.Settings.DownstreamRate = s.ClientLimits.MaxDownstreamRate
 		}
-
-		log.Printf("Initial settings based on target/subtarget %s/%s: downstream %d kbps, upstream %d kbps", target, subtarget, newSettings.DownstreamRate, newSettings.UpstreamRate)
-
-		s.Settings = newSettings
-		return s
+		if s.ClientLimits.MaxUpstreamRate > 0 {
+			s.Settings.UpstreamRate = s.ClientLimits.MaxUpstreamRate
+		}
+	} else {
+		// ToDo: Dynamic rate adaption here
 	}
 
-	/* Check currently set rate satisfies current constraints */
-	if s.Settings.MinDownstreamRate > 0 && s.Settings.DownstreamRate < s.Settings.MinDownstreamRate {
-		s.Settings.DownstreamRate = s.Settings.MinDownstreamRate
-		log.Printf("Updated downstream rate to %d kbps based on client message", s.Settings.DownstreamRate)
+	/* Ensure configured rates are within the min/max bounds */
+	if s.Settings.DownstreamRate < s.LocalLimits.MinDownstreamRate {
+		s.Settings.DownstreamRate = s.LocalLimits.MinDownstreamRate
 	}
-	if s.Settings.MinUpstreamRate > 0 && s.Settings.UpstreamRate < s.Settings.MinUpstreamRate {
-		s.Settings.UpstreamRate = s.Settings.MinUpstreamRate
-		log.Printf("Updated upstream rate to %d kbps based on client message", s.Settings.UpstreamRate)
+	if s.LocalLimits.MaxDownstreamRate > 0 && s.Settings.DownstreamRate > s.LocalLimits.MaxDownstreamRate {
+		s.Settings.DownstreamRate = s.LocalLimits.MaxDownstreamRate
 	}
-	if s.Settings.MaxDownstreamRate > 0 && s.Settings.DownstreamRate > s.Settings.MaxDownstreamRate {
-		s.Settings.DownstreamRate = s.Settings.MaxDownstreamRate
-		log.Printf("Updated downstream rate to %d kbps based on client message", s.Settings.DownstreamRate)
+	if s.Settings.UpstreamRate < s.LocalLimits.MinUpstreamRate {
+		s.Settings.UpstreamRate = s.LocalLimits.MinUpstreamRate
 	}
-	if s.Settings.MaxUpstreamRate > 0 && s.Settings.UpstreamRate > s.Settings.MaxUpstreamRate {
-		s.Settings.UpstreamRate = s.Settings.MaxUpstreamRate
-		log.Printf("Updated upstream rate to %d kbps based on client message", s.Settings.UpstreamRate)
+	if s.LocalLimits.MaxUpstreamRate > 0 && s.Settings.UpstreamRate > s.LocalLimits.MaxUpstreamRate {
+		s.Settings.UpstreamRate = s.LocalLimits.MaxUpstreamRate
 	}
 
-	/* ToDo: Dynamic update */
 	return s
 }
 
@@ -305,8 +370,13 @@ func (rl *RateLimiter) UpdateSettings(ifname string) error {
 
 	rl.initInterfaceState(ifname)
 
+	var targetSettings []config.TargetRateLimit
+	for _, targetLimit := range rl.TargetLimits {
+		targetSettings = append(targetSettings, targetLimit)
+	}
+
 	state := rl.state[ifname]
-	state = state.UpdateSettings()
+	state = state.UpdateSettings(targetSettings)
 	rl.state[ifname] = state
 
 	return nil
