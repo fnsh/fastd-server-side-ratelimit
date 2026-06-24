@@ -93,37 +93,6 @@ func (s RateLimiterInterfaceState) AddMessage(msg protocol.Message, fromClient b
 	return s
 }
 
-func (s RateLimiterInterfaceState) getDefaultSettings(target string, subtarget string) (error, RateLimiterInterfaceSettings) {
-	targetDefaultMapping := map[string]map[string]RateLimiterInterfaceSettings{
-		"ath79": {
-			"default": {DownstreamRate: 10000, UpstreamRate: 5000},
-		},
-		"ipq40xx": {
-			"default": {DownstreamRate: 25000, UpstreamRate: 10000},
-		},
-		"ramips": {
-			"mt7621":  {DownstreamRate: 25000, UpstreamRate: 12500},
-			"default": {DownstreamRate: 10000, UpstreamRate: 5000},
-		},
-		"default": {
-			"default": {DownstreamRate: 90000, UpstreamRate: 30000},
-		},
-	}
-
-	if subtargetSettings, ok := targetDefaultMapping[target]; ok {
-		if settings, ok := subtargetSettings[subtarget]; ok {
-			s.Settings = settings
-			return nil, settings
-		}
-		if settings, ok := subtargetSettings["default"]; ok {
-			s.Settings = settings
-			return nil, settings
-		}
-	}
-
-	return fmt.Errorf("no default settings found for target %q and subtarget %q", target, subtarget), RateLimiterInterfaceSettings{}
-}
-
 func (s RateLimiterInterfaceState) MatchTargetLimit(targetSettings []config.TargetRateLimit, target string, subtarget string) (error, config.TargetRateLimit) {
 	for _, ts := range targetSettings {
 		if ts.Target == target {
