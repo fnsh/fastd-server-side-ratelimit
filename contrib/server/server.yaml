@@ -4,25 +4,24 @@ bandwith:
     upload: 6000
 target_limits:
   - target: ""
-    initial_downstream_rate: 16000
+    initial_downstream_rate: 85000
     initial_upstream_rate: 8000
-    min_downstream_rate: 12000
-    min_upstream_rate: 6000
-    max_downstream_rate: 24000
-    max_upstream_rate: 12000
+    max_downstream_rate: 850000
+    max_upstream_rate: 850000
   - target: ath79
-    subtarget: generic
-    initial_downstream_rate: 12000
-    initial_upstream_rate: 6000
-    min_downstream_rate: 12000
-    min_upstream_rate: 6000
-    max_downstream_rate: 16000
+    initial_downstream_rate: 15000
+    initial_upstream_rate: 8000
+    max_downstream_rate: 15000
     max_upstream_rate: 8000
   - target: ramips
-    initial_downstream_rate: 14000
-    initial_upstream_rate: 7000
-    min_downstream_rate: 12000
-    min_upstream_rate: 6000
-    max_downstream_rate: 20000
-    max_upstream_rate: 10000
+    initial_downstream_rate: 15000
+    initial_upstream_rate: 8000
+    max_downstream_rate: 15000
+    max_upstream_rate: 8000
+  - target: ramips
+    subtarget: mt7621
+    initial_downstream_rate: 45000
+    initial_upstream_rate: 20000
+    max_downstream_rate: 45000
+    max_upstream_rate: 20000
 shaper_script: /home/dbauer/git/freifunk/fastd-server-side-ratelimit/contrib/apply-shaper.sh
