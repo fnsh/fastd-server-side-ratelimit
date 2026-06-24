@@ -57,6 +57,32 @@
           cfg = config.services.fastd-server-side-ratelimit;
           yaml = pkgs.formats.yaml { };
 
+          mkTargetLimit = limit:
+            {
+              target = limit.target;
+            }
+            // lib.optionalAttrs (limit.subtarget != null) {
+              subtarget = limit.subtarget;
+            }
+            // lib.optionalAttrs (limit.minDownstreamRate != null) {
+              min_downstream_rate = limit.minDownstreamRate;
+            }
+            // lib.optionalAttrs (limit.maxDownstreamRate != null) {
+              max_downstream_rate = limit.maxDownstreamRate;
+            }
+            // lib.optionalAttrs (limit.minUpstreamRate != null) {
+              min_upstream_rate = limit.minUpstreamRate;
+            }
+            // lib.optionalAttrs (limit.maxUpstreamRate != null) {
+              max_upstream_rate = limit.maxUpstreamRate;
+            }
+            // lib.optionalAttrs (limit.initialDownstreamRate != null) {
+              initial_downstream_rate = limit.initialDownstreamRate;
+            }
+            // lib.optionalAttrs (limit.initialUpstreamRate != null) {
+              initial_upstream_rate = limit.initialUpstreamRate;
+            };
+
           generatedConfig = yaml.generate "fastd-server-side-ratelimit.yaml" (
             {
               bandwith.min.download = cfg.minDownload;
@@ -75,6 +101,9 @@
             }
             // lib.optionalAttrs (cfg.interfaceSuffix != "") {
               interface_suffix = cfg.interfaceSuffix;
+            }
+            // lib.optionalAttrs (cfg.targetLimits != [ ]) {
+              target_limits = map mkTargetLimit cfg.targetLimits;
             }
           );
 
@@ -133,6 +162,62 @@
               type = lib.types.str;
               default = self.packages.${pkgs.system}.apply-shaper + "/bin/fssrl-apply-shaper";
               description = "Executable used to apply the shaper settings.";
+            };
+
+            targetLimits = lib.mkOption {
+              type = with lib.types; listOf (submodule {
+                options = {
+                  target = lib.mkOption {
+                    type = str;
+                    default = "";
+                    description = "OpenWrt target (empty string is the default fallback target).";
+                  };
+
+                  subtarget = lib.mkOption {
+                    type = nullOr str;
+                    default = null;
+                    description = "Optional OpenWrt subtarget.";
+                  };
+
+                  minDownstreamRate = lib.mkOption {
+                    type = nullOr ints.unsigned;
+                    default = null;
+                    description = "Optional minimum downstream rate in kbit/s for this target limit.";
+                  };
+
+                  maxDownstreamRate = lib.mkOption {
+                    type = nullOr ints.unsigned;
+                    default = null;
+                    description = "Optional maximum downstream rate in kbit/s for this target limit.";
+                  };
+
+                  minUpstreamRate = lib.mkOption {
+                    type = nullOr ints.unsigned;
+                    default = null;
+                    description = "Optional minimum upstream rate in kbit/s for this target limit.";
+                  };
+
+                  maxUpstreamRate = lib.mkOption {
+                    type = nullOr ints.unsigned;
+                    default = null;
+                    description = "Optional maximum upstream rate in kbit/s for this target limit.";
+                  };
+
+                  initialDownstreamRate = lib.mkOption {
+                    type = nullOr ints.unsigned;
+                    default = null;
+                    description = "Optional initial downstream rate in kbit/s for this target limit.";
+                  };
+
+                  initialUpstreamRate = lib.mkOption {
+                    type = nullOr ints.unsigned;
+                    default = null;
+                    description = "Optional initial upstream rate in kbit/s for this target limit.";
+                  };
+                };
+              });
+              default = [ ];
+              description = "Per-target and per-subtarget limits written as target_limits in the server config.";
             };
           };
 
