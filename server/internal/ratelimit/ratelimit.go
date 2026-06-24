@@ -164,10 +164,6 @@ func (s RateLimiterInterfaceState) updateRateRelative(percentageDown float64, pe
 }
 
 func (s RateLimiterInterfaceState) UpdateSettings() RateLimiterInterfaceState {
-	if s.LastUpdateTime.Add(60 * time.Second).After(time.Now()) {
-		return s
-	}
-
 	s.LastUpdateTime = time.Now()
 	/* Get latest client message to determine target and subtarget. */
 	if len(s.FromClient) == 0 {
@@ -338,6 +334,7 @@ func (rl *RateLimiter) GetResponseMessage(ifname string) (protocol.Message, erro
 
 	responseMessage.DownstreamCurrent = downstreamRate
 	responseMessage.UpstreamCurrent = upstreamRate
+	responseMessage.DownstreamConfigured = downstreamRate
 	responseMessage.SequenceNumber = rl.state[ifname].LastUpdateSequenceNumber + 1
 
 	return responseMessage, nil
