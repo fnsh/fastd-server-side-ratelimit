@@ -55,15 +55,20 @@ run_tc() {
 	tc "$@"
 }
 
+get_system_ram() {
+	awk '/MemTotal/ {printf "%.0f\n", $2 / 1024}' /proc/meminfo
+}
+
 run_cake_qdisc() {
 	dev="$1"
 	bandwidth_kbit="$2"
+	memlimit="$3"
 	if [ "$bandwidth_kbit" -gt 0 ]; then
 		run_tc qdisc replace dev "$dev" root cake \
 			bandwidth "${bandwidth_kbit}kbit" \
 			besteffort \
 			ack-filter \
-			memlimit 256k \
+			memlimit "$memlimit" \
 			rtt 50ms
 	else
 		run_tc qdisc del dev "$dev" root || true
@@ -88,11 +93,20 @@ UPSTREAM_RATE="$(sanitize_rate "$UPSTREAM_RATE")"
 if [ "$ROLE" = "server" ]; then
 	# For server role, we shape the downstream traffic (towards clients)
 	# and use the upstream rate as the bandwidth limit for the shaper.
-	run_cake_qdisc "$TARGET_IF" "$DOWNSTREAM_RATE"
+	run_cake_qdisc "$TARGET_IF" "$DOWNSTREAM_RATE" "4m"
 else
 	# For client role, we shape the upstream traffic (towards server)
 	# and use the downstream rate as the bandwidth limit for the shaper.
-	run_cake_qdisc "$TARGET_IF" "$UPSTREAM_RATE"
+	SYSTEM_RAM="$(get_system_ram)"
+	MEMORY_LIMIT="4m"
+	if [ "$SYSTEM_RAM" -lt 64 ]; then
+		MEMORY_LIMIT="512k"
+	elif [ "$SYSTEM_RAM" -lt 128 ]; then
+		MEMORY_LIMIT="1m"
+	else
+		MEMORY_LIMIT="4m"
+	fi
+	run_cake_qdisc "$TARGET_IF" "$UPSTREAM_RATE" "$MEMORY_LIMIT"
 fi
 
 exit 0
