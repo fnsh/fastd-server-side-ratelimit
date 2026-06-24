@@ -265,7 +265,7 @@ int main(int argc, char *argv[])
 
 	/* defaults */
 	memset(&state, 0, sizeof(state));
-	state.config.ratelimit_ifname = "wlp1s0";
+	state.communication_socket = -1;
 
 	static struct option longopts[] = {
 		{"interface", required_argument, NULL, 'i'},
@@ -361,21 +361,27 @@ int main(int argc, char *argv[])
 			state.communication_ok = 1;
 		}
 
-		memset(&packet, 0, sizeof(packet));
-		if (ssr_update_system_state(&state) < 0) {
-			ssr_log(LOG_ERR, "Failed to update system state");
-			continue;
+		if (state.communication_last_send_time + state.config.interval_seconds < time(NULL)) {
+			state.communication_last_send_time = time(NULL);
+
+			memset(&packet, 0, sizeof(packet));
+			if (ssr_update_system_state(&state) < 0) {
+				ssr_log(LOG_ERR, "Failed to update system state");
+				continue;
+			}
+			ssr_log(LOG_DEBUG, "Load: %u, %u, %u | Sent: %lu pkts, %lu kbytes | Recv: %lu pkts, %lu kbytes",
+				state.system_state.load1, state.system_state.load5, state.system_state.load15,
+				state.system_state.pkts_sent, state.system_state.kbytes_sent,
+				state.system_state.pkts_recv, state.system_state.kbytes_recv);
+			ssr_packet_build(&state, &packet);
+			ssr_communication_send(&state, &packet);
 		}
-		ssr_log(LOG_DEBUG, "Load: %u, %u, %u | Sent: %lu pkts, %lu kbytes | Recv: %lu pkts, %lu kbytes",
-			state.system_state.load1, state.system_state.load5, state.system_state.load15,
-			state.system_state.pkts_sent, state.system_state.kbytes_sent,
-			state.system_state.pkts_recv, state.system_state.kbytes_recv);
-		ssr_packet_build(&state, &packet);
-		ssr_communication_send(&state, &packet	);
+		
 		if (ssr_communication_receive(&state, &packet) == 0) {
 			ssr_handle_received_packet(&state, &packet);
 		}
-		sleep(state.config.interval_seconds);
+
+		sleep(1);
 	}
 out:
 	ssr_log_close();

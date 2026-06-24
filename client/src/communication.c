@@ -103,7 +103,7 @@ int ssr_communication_receive(struct ssr_state *state, struct ssr_packet_v1 *pac
 
 int ssr_communication_init(struct ssr_state *state)
 {
-	if (!state->communication_socket) {
+	if (state->communication_socket < 0) {
 		state->communication_socket = ssr_communication_socket_create();
 		if (state->communication_socket < 0) {
 			ssr_log(LOG_ERR, "Failed to create communication socket");

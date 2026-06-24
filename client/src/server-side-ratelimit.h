@@ -3,6 +3,7 @@
 #define SERVER_SIDE_RATELIMIT_H
 
 #include <stdint.h>
+#include <time.h>
 #include "packet.h"
 
 #define SSR_PROTOCOL_VERSION 1
@@ -40,6 +41,7 @@ struct ssr_state {
 	int communication_socket;
 	uint8_t communication_ok;
 	uint32_t communication_sequence_number;
+	time_t communication_last_send_time;
 
 	uint32_t downstream_target;
 	uint32_t downstream_configured;
