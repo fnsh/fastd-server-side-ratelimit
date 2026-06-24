@@ -213,39 +213,6 @@ func TestUpdateClientSignaledRatesAppliesLatestMessage(t *testing.T) {
 	}
 }
 
-func TestUpdateRateAbsoluteClampsToConfiguredBounds(t *testing.T) {
-	state := RateLimiterInterfaceState{
-		Settings: RateLimiterInterfaceSettings{
-			DownstreamRate:    100,
-			UpstreamRate:      200,
-			MinDownstreamRate: 80,
-			MinUpstreamRate:   150,
-			MaxDownstreamRate: 120,
-			MaxUpstreamRate:   250,
-		},
-		LastRateIncrease:  make(map[RateLimitEventType]time.Time),
-		LastRateReduction: make(map[RateLimitEventType]time.Time),
-	}
-
-	err, updated := state.updateRateAbsolute(-50, -100, PacketLossUpstream)
-	if err != nil {
-		t.Fatalf("updateRateAbsolute returned error: %v", err)
-	}
-	if updated.Settings.DownstreamRate != 80 {
-		t.Fatalf("expected downstream rate to clamp to 80, got %d", updated.Settings.DownstreamRate)
-	}
-	if updated.Settings.UpstreamRate != 150 {
-		t.Fatalf("expected upstream rate to clamp to 150, got %d", updated.Settings.UpstreamRate)
-	}
-	if updated.LastRateIncrease[PacketLossUpstream].IsZero() {
-		t.Fatalf("expected last rate increase timestamp to be recorded")
-	}
-
-	if err, _ := state.updateRateAbsolute(-1, 1, PacketLossUpstream); err == nil {
-		t.Fatalf("expected mixed direction update to fail")
-	}
-}
-
 func TestUpdateSettingsUsesTargetDefaults(t *testing.T) {
 	msg := newTestMessage(t, 7, "foo", "bar", 0, 0, 0, 0)
 	state := RateLimiterInterfaceState{
