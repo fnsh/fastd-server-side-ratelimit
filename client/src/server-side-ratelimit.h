@@ -44,6 +44,8 @@ struct ssr_state {
 	int communication_scope_id;
 	time_t communication_last_send_time;
 
+	uint8_t rate_update_force;
+
 	uint32_t downstream_target;
 	uint32_t downstream_configured;
 	uint32_t upstream_target;

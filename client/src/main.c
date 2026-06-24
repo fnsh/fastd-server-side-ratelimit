@@ -216,7 +216,7 @@ int ssr_handle_received_packet(struct ssr_state *state, struct ssr_packet_v1 *pa
 	state->downstream_configured = downstream_configured_new;
 	state->upstream_configured = upstream_configured_new;
 
-	if (update) {
+	if (update || state->rate_update_force) {
 		ssr_log(LOG_INFO, "Applying rate limit: downstream %u kbps, upstream %u kbps", downstream_target, upstream_target);
 		return ssr_apply_rate_limit(state, downstream_configured_new, upstream_configured_new);
 	}
@@ -370,6 +370,7 @@ int main(int argc, char *argv[])
 			} else {
 				ssr_log(LOG_INFO, "Communication init successful");
 				state.communication_ok = 1;
+				state.rate_update_force = 1;
 			}
 		}
 
