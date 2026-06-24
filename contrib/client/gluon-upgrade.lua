@@ -16,8 +16,12 @@ uci:delete('simple-tc', 'mesh_vpn')
 uci:delete('sqm', 'mesh_vpn')
 
 -- Add IPv6 LL to mesh-vpn interface
-uci:delete('network', 'mesh_vpn', 'ip6addr')
-uci:set_list('network', 'mesh_vpn', 'ip6addr', {'fe80::f421:d:2/64'})
+
+uci:section('network', 'interface', 'mesh_vpn_fssrl', {
+	ifname = 'mesh-vpn',
+	proto = 'static',
+})
+uci:set_list('network', 'mesh_vpn_fssrl', 'ip6addr', {'fe80::f421:d:2/64'})
 
 -- Configure own rules
 uci:section('fssrl', 'fssrl', 'vpn', {
