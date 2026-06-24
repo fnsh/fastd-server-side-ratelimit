@@ -44,12 +44,8 @@ func main() {
 	}
 
 	rateLimiter = ratelimit.RateLimiter{
-		MinDownstreamRate: cfg.Bandwith.Min.Download,
-		MinUpstreamRate:   cfg.Bandwith.Min.Upload,
-		MaxDownstreamRate: cfg.Bandwith.Max.Download,
-		MaxUpstreamRate:   cfg.Bandwith.Max.Upload,
-		ShaperScript:      cfg.ShaperScript,
-		TargetLimits:      cfg.TargetLimits,
+		ShaperScript: cfg.ShaperScript,
+		TargetLimits: cfg.TargetLimits,
 	}
 
 	err = runServer(cfg)

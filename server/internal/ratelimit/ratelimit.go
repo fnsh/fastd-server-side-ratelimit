@@ -35,12 +35,6 @@ type RateLimiterInterfaceLimits struct {
 type RateLimiterInterfaceSettings struct {
 	DownstreamRate uint32
 	UpstreamRate   uint32
-
-	MinDownstreamRate uint32
-	MinUpstreamRate   uint32
-
-	MaxDownstreamRate uint32
-	MaxUpstreamRate   uint32
 }
 
 type RateLimiterInterfaceState struct {
@@ -224,12 +218,8 @@ type RateLimiter struct {
 	TargetLimits []config.TargetRateLimit
 
 	// state holds the last 15 Minutes of messages per client, indexed by the interface name
-	state             map[string]RateLimiterInterfaceState
-	MinDownstreamRate uint32
-	MinUpstreamRate   uint32
-	MaxDownstreamRate uint32
-	MaxUpstreamRate   uint32
-	ShaperScript      string
+	state        map[string]RateLimiterInterfaceState
+	ShaperScript string
 }
 
 func (rl *RateLimiter) initInterfaceState(ifname string) {
@@ -337,12 +327,22 @@ func (rl *RateLimiter) GetResponseMessage(ifname string) (protocol.Message, erro
 		return protocol.Message{}, fmt.Errorf("failed to clone message for response: %v", err)
 	}
 
-	downstreamRate := rl.state[ifname].Settings.DownstreamRate
-	upstreamRate := rl.state[ifname].Settings.UpstreamRate
+	settings := rl.state[ifname].Settings
+	localLimits := rl.state[ifname].LocalLimits
+	// Locally applied
+	responseMessage.DownstreamCurrent = settings.DownstreamRate
+	responseMessage.DownstreamConfigured = settings.DownstreamRate
 
-	responseMessage.DownstreamCurrent = downstreamRate
-	responseMessage.UpstreamCurrent = upstreamRate
-	responseMessage.DownstreamConfigured = downstreamRate
+	// Remote client signaled
+	responseMessage.UpstreamCurrent = settings.UpstreamRate
+	responseMessage.UpstreamConfigured = settings.UpstreamRate
+
+	// Local limits
+	responseMessage.DownstreamMin = localLimits.MinDownstreamRate
+	responseMessage.DownstreamMax = localLimits.MaxDownstreamRate
+	responseMessage.UpstreamMin = localLimits.MinUpstreamRate
+	responseMessage.UpstreamMax = localLimits.MaxUpstreamRate
+
 	responseMessage.SequenceNumber = rl.state[ifname].LastUpdateSequenceNumber + 1
 
 	return responseMessage, nil
