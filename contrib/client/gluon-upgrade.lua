@@ -8,19 +8,16 @@ local rate_downstream = uci:get('gluon', 'mesh_vpn', 'limit_ingress')
 local rate_upstream = uci:get('gluon', 'mesh_vpn', 'limit_egress')
 
 if not limit_enabled then
-	uci:delete('network', 'mesh_vpn_fssrl')
-	uci:delete('fssrl', 'vpn')
-	uci:save('network')
-	uci:save('fssrl')
-	return
+	rate_downstream = 0
+	rate_upstream = 0
 end
+
 
 -- Need to remove simple-tc and sqm rules
 uci:delete('simple-tc', 'mesh_vpn')
 uci:delete('sqm', 'mesh_vpn')
 
 -- Add IPv6 LL to mesh-vpn interface
-
 uci:section('network', 'interface', 'mesh_vpn_fssrl', {
 	ifname = 'mesh-vpn',
 	proto = 'static',
