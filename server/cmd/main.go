@@ -123,7 +123,7 @@ func sendResponse(message protocol.Message, ifname string, pconn *ipv6.PacketCon
 
 func handleMesage(message protocol.Message, ifi *net.Interface, pconn *ipv6.PacketConn) error {
 	// ToDo: Cleanup somewhere else
-	// rateLimiter.Cleanup()
+	rateLimiter.Cleanup()
 
 	// Add message
 	rateLimiter.AddMessage(message, ifi.Name)
