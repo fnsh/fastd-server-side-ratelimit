@@ -213,19 +213,19 @@ func (s RateLimiterInterfaceState) UpdateSettings() RateLimiterInterfaceState {
 	}
 
 	/* Check currently set rate satisfies current constraints */
-	if s.Settings.DownstreamRate < s.Settings.MinDownstreamRate {
+	if s.Settings.MinDownstreamRate > 0 && s.Settings.DownstreamRate < s.Settings.MinDownstreamRate {
 		s.Settings.DownstreamRate = s.Settings.MinDownstreamRate
 		log.Printf("Updated downstream rate to %d kbps based on client message", s.Settings.DownstreamRate)
 	}
-	if s.Settings.UpstreamRate < s.Settings.MinUpstreamRate {
+	if s.Settings.MinUpstreamRate > 0 && s.Settings.UpstreamRate < s.Settings.MinUpstreamRate {
 		s.Settings.UpstreamRate = s.Settings.MinUpstreamRate
 		log.Printf("Updated upstream rate to %d kbps based on client message", s.Settings.UpstreamRate)
 	}
-	if s.Settings.DownstreamRate > s.Settings.MaxDownstreamRate {
+	if s.Settings.MaxDownstreamRate > 0 && s.Settings.DownstreamRate > s.Settings.MaxDownstreamRate {
 		s.Settings.DownstreamRate = s.Settings.MaxDownstreamRate
 		log.Printf("Updated downstream rate to %d kbps based on client message", s.Settings.DownstreamRate)
 	}
-	if s.Settings.UpstreamRate > s.Settings.MaxUpstreamRate {
+	if s.Settings.MaxUpstreamRate > 0 && s.Settings.UpstreamRate > s.Settings.MaxUpstreamRate {
 		s.Settings.UpstreamRate = s.Settings.MaxUpstreamRate
 		log.Printf("Updated upstream rate to %d kbps based on client message", s.Settings.UpstreamRate)
 	}
