@@ -55,6 +55,17 @@ run_tc() {
 	tc "$@"
 }
 
+run_cake_qdisc() {
+	dev="$1"
+	bandwidth_kbit="$2"
+	run_tc qdisc replace dev "$dev" root cake \
+		bandwidth "${bandwidth_kbit}kbit" \
+		besteffort \
+		ack-filter \
+		memlimit 256k \
+		rtt 50ms
+}
+
 
 ROLE="$(require_var FSSRL_ROLE)"
 if [ "$ROLE" != "server" ] && [ "$ROLE" != "client" ]; then
@@ -70,16 +81,14 @@ DOWNSTREAM_RATE="$(sanitize_rate "$DOWNSTREAM_RATE")"
 UPSTREAM_RATE="$(require_var FSSRL_UPSTREAM_RATE)"
 UPSTREAM_RATE="$(sanitize_rate "$UPSTREAM_RATE")"
 
-CAKE_PARAMS_SHARED="besteffort ack-filter memlimit 256k rtt 50ms"
-
 if [ "$ROLE" = "server" ]; then
 	# For server role, we shape the downstream traffic (towards clients)
 	# and use the upstream rate as the bandwidth limit for the shaper.
-	run_tc qdisc replace dev "$TARGET_IF" root cake bandwidth "${DOWNSTREAM_RATE}kbit" ${CAKE_PARAMS_SHARED}
+	run_cake_qdisc "$TARGET_IF" "$DOWNSTREAM_RATE"
 else
 	# For client role, we shape the upstream traffic (towards server)
 	# and use the downstream rate as the bandwidth limit for the shaper.
-	run_tc qdisc replace dev "$TARGET_IF" root cake bandwidth "${UPSTREAM_RATE}kbit" ${CAKE_PARAMS_SHARED}
+	run_cake_qdisc "$TARGET_IF" "$UPSTREAM_RATE"
 fi
 
 exit 0
