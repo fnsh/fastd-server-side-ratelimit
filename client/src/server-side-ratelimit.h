@@ -10,6 +10,8 @@
 struct ssr_config {
 	char *ratelimit_ifname;
 	char *script;
+	int interval_seconds;
+
 	uint32_t downstream_min;
 	uint32_t downstream_max;
 	uint32_t upstream_min;
@@ -36,17 +38,19 @@ struct ssr_state {
 	} system_state;
 
 	int communication_socket;
+	uint8_t communication_ok;
 	uint32_t communication_sequence_number;
 
-	uint32_t downstream_current;
+	uint32_t downstream_target;
 	uint32_t downstream_configured;
-	uint32_t upstream_current;
+	uint32_t upstream_target;
 	uint32_t upstream_configured;
 };
 
 int ssr_communication_send(struct ssr_state *state, struct ssr_packet_v1 *packet);
 int ssr_communication_receive(struct ssr_state *state, struct ssr_packet_v1 *packet);
 int ssr_communication_init(struct ssr_state *state);
+int ssr_communication_close(struct ssr_state *state);
 
 
 #endif

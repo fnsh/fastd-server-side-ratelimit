@@ -4,9 +4,11 @@
 #include <unistd.h>
 #include <stdint.h>
 #include <sys/wait.h>
+#include <errno.h>
 
 #include <arpa/inet.h>
 
+#include "log.h"
 #include "server-side-ratelimit.h"
 #include <getopt.h>
 #include <endian.h>
@@ -95,23 +97,29 @@ int ssr_update_system_state(struct ssr_state *state)
 int ssr_validate_config(struct ssr_config *config)
 {
 	if (!config->downstream_min) {
-		fprintf(stderr, "Downstream min not set - Configuring to 2048 kbps\n");
+		ssr_log(LOG_WARNING, "Downstream min not set - Configuring to 2048 kbps");
 		config->downstream_min = 2048;
 	}
 
 	if (!config->upstream_min) {
-		fprintf(stderr, "Upstream min not set - Configuring to 512 kbps\n");
+		ssr_log(LOG_WARNING, "Upstream min not set - Configuring to 512 kbps");
 		config->upstream_min = 512;
 	}
 
 	if (config->downstream_max && config->downstream_min > config->downstream_max) {
-		fprintf(stderr, "Downstream min cannot be greater than max\n");
+		ssr_log(LOG_ERR, "Downstream min cannot be greater than max");
 		return -1;
 	}
 	if (config->upstream_max && config->upstream_min > config->upstream_max) {
-		fprintf(stderr, "Upstream min cannot be greater than max\n");
+		ssr_log(LOG_ERR, "Upstream min cannot be greater than max");
 		return -1;
 	}
+
+	if (config->interval_seconds <= 0) {
+		ssr_log(LOG_ERR, "Interval seconds must be greater than 0");
+		return -1;
+	}
+
 	return 0;
 }
 
@@ -132,7 +140,7 @@ int ssr_apply_rate_limit(struct ssr_state *state, uint32_t downstream_rate, uint
 	};
 
 	if (state->config.script == NULL) {
-		fprintf(stderr, "No script configured to apply rate limit\n");
+		ssr_log(LOG_ERR, "No script configured to apply rate limit");
 		return -1;
 	}
 
@@ -146,7 +154,7 @@ int ssr_apply_rate_limit(struct ssr_state *state, uint32_t downstream_rate, uint
 	FILE *fp = popen(state->config.script, "r");
 	int ret = -1;
 	if (fp == NULL) {
-		perror("popen");
+		ssr_log_errno(LOG_ERR, errno, "popen");
 	} else {
 		ret = pclose(fp);
 	}
@@ -155,10 +163,10 @@ int ssr_apply_rate_limit(struct ssr_state *state, uint32_t downstream_rate, uint
 		unsetenv(envs[i].envname);
 	}
 	if (ret < 0) {
-		perror("pclose");
+		ssr_log_errno(LOG_ERR, errno, "pclose");
 		return -1;
 	} else if (WEXITSTATUS(ret) != 0) {
-		fprintf(stderr, "apply_rate.sh failed with exit code %d\n", WEXITSTATUS(ret));
+		ssr_log(LOG_ERR, "apply_rate.sh failed with exit code %d", WEXITSTATUS(ret));
 		return -1;
 	}
 	return 0;
@@ -167,37 +175,52 @@ int ssr_apply_rate_limit(struct ssr_state *state, uint32_t downstream_rate, uint
 int ssr_handle_received_packet(struct ssr_state *state, struct ssr_packet_v1 *packet)
 {
 	// Extract Rate information and apply
-	uint32_t downstream_current = ntohl(packet->downstream_current);
-	uint32_t upstream_current = ntohl(packet->upstream_current);
+	uint32_t downstream_target = ntohl(packet->downstream_target);
+	uint32_t upstream_target = ntohl(packet->upstream_target);
 
-	state->downstream_configured = ntohl(packet->downstream_configured);
-	state->upstream_configured = ntohl(packet->upstream_configured);
+	uint32_t downstream_configured_new = downstream_target;
+	uint32_t upstream_configured_new = upstream_target;
 
-	printf("Received rate limit update: downstream %u kbps, upstream %u kbps\n", downstream_current, upstream_current);
+	int update = 0;
+
+	ssr_log(LOG_DEBUG, "Received rate limit update: downstream %u kbps, upstream %u kbps", downstream_target, upstream_target);
 
 	// Check if this is within configured limits
 	if (state->config.downstream_min) {
-		if (downstream_current < state->config.downstream_min) {
-			downstream_current = state->config.downstream_min;
-		} else if (downstream_current > state->config.downstream_max) {
-			downstream_current = state->config.downstream_max;
+		if (downstream_configured_new < state->config.downstream_min) {
+			downstream_configured_new = state->config.downstream_min;
+		} else if (downstream_configured_new > state->config.downstream_max) {
+			downstream_configured_new = state->config.downstream_max;
 		}
 	}
 
 	if (state->config.upstream_min) {
-		if (upstream_current < state->config.upstream_min) {
-			upstream_current = state->config.upstream_min;
-		} else if (upstream_current > state->config.upstream_max) {
-			upstream_current = state->config.upstream_max;
+		if (upstream_configured_new < state->config.upstream_min) {
+			upstream_configured_new = state->config.upstream_min;
+		} else if (upstream_configured_new > state->config.upstream_max) {
+			upstream_configured_new = state->config.upstream_max;
 		}
 	}
 
-	state->downstream_current = downstream_current;
-	state->upstream_current = upstream_current;
+	if (state->downstream_configured != downstream_configured_new) {
+		ssr_log(LOG_INFO, "Updating downstream rate limit from %u kbps to %u kbps", state->downstream_configured, downstream_configured_new);
+		update = 1;
+	}
 
-	fprintf(stderr, "Applying rate limit: downstream %u kbps, upstream %u kbps\n", downstream_current, upstream_current);
+	if (state->upstream_configured != upstream_configured_new) {
+		ssr_log(LOG_INFO, "Updating upstream rate limit from %u kbps to %u kbps", state->upstream_configured, upstream_configured_new);
+		update = 1;
+	}
 
-	return ssr_apply_rate_limit(state, downstream_current, upstream_current);
+	state->downstream_configured = downstream_configured_new;
+	state->upstream_configured = upstream_configured_new;
+
+	if (update) {
+		ssr_log(LOG_INFO, "Applying rate limit: downstream %u kbps, upstream %u kbps", downstream_target, upstream_target);
+		return ssr_apply_rate_limit(state, downstream_configured_new, upstream_configured_new);
+	}
+
+	return 0;
 }
 
 int ssr_packet_build(struct ssr_state *state, struct ssr_packet_v1 *packet)
@@ -207,11 +230,11 @@ int ssr_packet_build(struct ssr_state *state, struct ssr_packet_v1 *packet)
 	packet->sequence_number = htonl(state->communication_sequence_number++);
 
 	/* Rates */
-	packet->downstream_current = htonl(state->downstream_current);
+	packet->downstream_target = htonl(state->downstream_target);
 	packet->downstream_configured = htonl(state->downstream_configured);
 	packet->downstream_min = htonl(state->config.downstream_min);
 	packet->downstream_max = htonl(state->config.downstream_max);
-	packet->upstream_current = htonl(state->upstream_current);
+	packet->upstream_target = htonl(state->upstream_target);
 	packet->upstream_configured = htonl(state->upstream_configured);
 	packet->upstream_min = htonl(state->config.upstream_min);
 	packet->upstream_max = htonl(state->config.upstream_max);
@@ -253,8 +276,14 @@ int main(int argc, char *argv[])
 		{"downstream-max", required_argument, NULL, 'b'},
 		{"upstream-min", required_argument, NULL, 'c'},
 		{"upstream-max", required_argument, NULL, 'd'},
+		{"interval", required_argument, NULL, 'n'},
+		{"log-syslog", no_argument, NULL, 'l'},
+		{"log-level", required_argument, NULL, 'v'},
 		{NULL, 0, NULL, 0}
 	};
+	int log_destination = SSR_LOG_DEST_STDERR;
+	int log_level = LOG_INFO;
+	int ret = 0;
 
 	int opt;
 	while ((opt = getopt_long(argc, argv, "", longopts, NULL)) != -1) {
@@ -274,6 +303,9 @@ int main(int argc, char *argv[])
 		case 'd':
 			state.config.upstream_max = strtoul(optarg, NULL, 10);
 			break;
+		case 'n':
+			state.config.interval_seconds = strtoul(optarg, NULL, 10);
+			break;
 		case 't':
 			strncpy(state.system_state.target, optarg, sizeof(state.system_state.target) - 1);
 			state.system_state.target[sizeof(state.system_state.target) - 1] = '\0';
@@ -285,35 +317,67 @@ int main(int argc, char *argv[])
 		case 'p':
 			state.config.script = optarg;
 			break;
+		case 'l':
+			log_destination = SSR_LOG_DEST_SYSLOG;
+			break;
+		case 'v':
+			if (ssr_log_parse_level(optarg, &log_level) < 0) {
+				fprintf(stderr, "Unknown log level: %s\n", optarg);
+				return 1;
+			}
+			break;
 		default:
-			fprintf(stderr, "Usage: %s --interface IFNAME --downstream-min N --downstream-max N --upstream-min N --upstream-max N --target TARGET --subtarget SUBTARGET\n", argv[0]);
+			fprintf(stderr, "Usage: %s --interface IFNAME --downstream-min N --downstream-max N --upstream-min N --upstream-max N --target TARGET --subtarget SUBTARGET [--log-syslog] [--log-level LEVEL]\n", argv[0]);
 			return 1;
 		}
 	}
 
-	if (ssr_validate_config(&state.config) < 0) {
-		return 1;
-	}
+	ssr_log_init(log_destination, log_level);
 
-	if (ssr_communication_init(&state) < 0) {
-		return 1;
+	if (ssr_validate_config(&state.config) < 0) {
+		ret = 1;
+		goto out;
 	}
 
 	while (1) {
 		struct ssr_packet_v1 packet;
 
+		/* Need to validate Network is set up correctly.
+		 * The interface might not be there yet or have disappeared.
+		 *
+		 * For this reason, check if the interface is present.
+		 */
+		ret = ssr_communication_init(&state);
+		if (ret < 0) {
+			if (state.communication_ok) {
+				ssr_log(LOG_ERR, "Communication init failed: %d", ret);
+				state.communication_ok = 0;
+			}
+			ssr_communication_close(&state);
+			sleep(5);
+			continue;
+		} else if (!state.communication_ok) {
+			ssr_log(LOG_INFO, "Communication init successful");
+			state.communication_ok = 1;
+		}
+
 		memset(&packet, 0, sizeof(packet));
-		ssr_update_system_state(&state);
-		printf("Load: %u, %u, %u | Sent: %lu pkts, %lu kbytes | Recv: %lu pkts, %lu kbytes\n",
-		       state.system_state.load1, state.system_state.load5, state.system_state.load15,
-		       state.system_state.pkts_sent, state.system_state.kbytes_sent,
-		       state.system_state.pkts_recv, state.system_state.kbytes_recv);
-		sleep(1);
+		if (ssr_update_system_state(&state) < 0) {
+			ssr_log(LOG_ERR, "Failed to update system state");
+			continue;
+		}
+		ssr_log(LOG_DEBUG, "Load: %u, %u, %u | Sent: %lu pkts, %lu kbytes | Recv: %lu pkts, %lu kbytes",
+			state.system_state.load1, state.system_state.load5, state.system_state.load15,
+			state.system_state.pkts_sent, state.system_state.kbytes_sent,
+			state.system_state.pkts_recv, state.system_state.kbytes_recv);
 		ssr_packet_build(&state, &packet);
 		ssr_communication_send(&state, &packet	);
 		if (ssr_communication_receive(&state, &packet) == 0) {
 			ssr_handle_received_packet(&state, &packet);
 		}
+		sleep(state.config.interval_seconds);
 	}
-	return 0;
+out:
+	ssr_log_close();
+	return ret;
 }

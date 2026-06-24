@@ -70,14 +70,16 @@ DOWNSTREAM_RATE="$(sanitize_rate "$DOWNSTREAM_RATE")"
 UPSTREAM_RATE="$(require_var FSSRL_UPSTREAM_RATE)"
 UPSTREAM_RATE="$(sanitize_rate "$UPSTREAM_RATE")"
 
+CAKE_PARAMS_SHARED="rtt regional besteffort ack-filter memlimit 256k"
+
 if [ "$ROLE" = "server" ]; then
 	# For server role, we shape the downstream traffic (towards clients)
 	# and use the upstream rate as the bandwidth limit for the shaper.
-	run_tc qdisc replace dev "$TARGET_IF" root cake bandwidth "${DOWNSTREAM_RATE}kbit" besteffort ack-filter
+	run_tc qdisc replace dev "$TARGET_IF" root cake bandwidth "${DOWNSTREAM_RATE}kbit" ${CAKE_PARAMS_SHARED}
 else
 	# For client role, we shape the upstream traffic (towards server)
 	# and use the downstream rate as the bandwidth limit for the shaper.
-	run_tc qdisc replace dev "$TARGET_IF" root cake bandwidth "${UPSTREAM_RATE}kbit" besteffort ack-filter
+	run_tc qdisc replace dev "$TARGET_IF" root cake bandwidth "${UPSTREAM_RATE}kbit" ${CAKE_PARAMS_SHARED}
 fi
 
 exit 0

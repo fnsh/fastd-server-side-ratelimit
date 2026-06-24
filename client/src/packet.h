@@ -25,12 +25,12 @@ struct ssr_packet_v1 {
 	uint64_t pkts_recv;
 	uint64_t kbs_recv;
 
-	uint32_t downstream_current;
+	uint32_t downstream_target;
 	uint32_t downstream_configured;
 	uint32_t downstream_min;
 	uint32_t downstream_max;
 
-	uint32_t upstream_current;
+	uint32_t upstream_target;
 	uint32_t upstream_configured;
 	uint32_t upstream_min;
 	uint32_t upstream_max;
