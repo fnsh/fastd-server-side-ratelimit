@@ -49,6 +49,7 @@ func main() {
 		MaxDownstreamRate: cfg.Bandwith.Max.Download,
 		MaxUpstreamRate:   cfg.Bandwith.Max.Upload,
 		ShaperScript:      cfg.ShaperScript,
+		TargetLimits:      cfg.TargetLimits,
 	}
 
 	err = runServer(cfg)

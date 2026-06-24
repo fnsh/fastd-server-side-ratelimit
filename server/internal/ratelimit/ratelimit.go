@@ -272,7 +272,7 @@ func (s RateLimiterInterfaceState) UpdateSettings(targetSettings []config.Target
 type RateLimiter struct {
 	mu sync.Mutex
 
-	TargetLimits map[string]config.TargetRateLimit
+	TargetLimits []config.TargetRateLimit
 
 	// state holds the last 15 Minutes of messages per client, indexed by the interface name
 	state             map[string]RateLimiterInterfaceState
@@ -339,13 +339,8 @@ func (rl *RateLimiter) UpdateSettings(ifname string) error {
 
 	rl.initInterfaceState(ifname)
 
-	var targetSettings []config.TargetRateLimit
-	for _, targetLimit := range rl.TargetLimits {
-		targetSettings = append(targetSettings, targetLimit)
-	}
-
 	state := rl.state[ifname]
-	state = state.UpdateSettings(targetSettings)
+	state = state.UpdateSettings(rl.TargetLimits)
 	rl.state[ifname] = state
 
 	return nil
