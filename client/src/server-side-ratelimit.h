@@ -41,6 +41,7 @@ struct ssr_state {
 	int communication_socket;
 	uint8_t communication_ok;
 	uint32_t communication_sequence_number;
+	int communication_scope_id;
 	time_t communication_last_send_time;
 
 	uint32_t downstream_target;

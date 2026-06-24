@@ -7,6 +7,7 @@
 #include <errno.h>
 
 #include <arpa/inet.h>
+#include <net/if.h>
 
 #include "log.h"
 #include "server-side-ratelimit.h"
@@ -341,24 +342,35 @@ int main(int argc, char *argv[])
 
 	while (1) {
 		struct ssr_packet_v1 packet;
+		int scope_id = if_nametoindex(state.config.ratelimit_ifname);
 
 		/* Need to validate Network is set up correctly.
 		 * The interface might not be there yet or have disappeared.
 		 *
 		 * For this reason, check if the interface is present.
 		 */
-		ret = ssr_communication_init(&state);
-		if (ret < 0) {
-			if (state.communication_ok) {
-				ssr_log(LOG_ERR, "Communication init failed: %d", ret);
-				state.communication_ok = 0;
-			}
+
+		if (scope_id != state.communication_scope_id) {
+			ssr_log(LOG_INFO, "Interface %s scope_id changed from %d to %d", state.config.ratelimit_ifname, state.communication_scope_id, scope_id);
+			state.communication_scope_id = scope_id;
+			state.communication_ok = 0;
 			ssr_communication_close(&state);
-			sleep(5);
-			continue;
-		} else if (!state.communication_ok) {
-			ssr_log(LOG_INFO, "Communication init successful");
-			state.communication_ok = 1;
+		}
+
+		if (!state.communication_ok){
+			ret = ssr_communication_init(&state);
+			if (ret < 0) {
+				if (state.communication_ok) {
+					ssr_log(LOG_ERR, "Communication init failed: %d", ret);
+					state.communication_ok = 0;
+				}
+				ssr_communication_close(&state);
+				sleep(5);
+				continue;
+			} else {
+				ssr_log(LOG_INFO, "Communication init successful");
+				state.communication_ok = 1;
+			}
 		}
 
 		if (state.communication_last_send_time + state.config.interval_seconds < time(NULL)) {

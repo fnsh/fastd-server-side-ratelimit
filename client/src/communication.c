@@ -50,7 +50,7 @@ int ssr_communication_bind(struct ssr_state *state)
 	addr.sin6_addr = in6addr_any;
 	inet_pton(AF_INET6, "fe80::f421:d:2", &addr.sin6_addr);
 	addr.sin6_port = htons(42454);
-	addr.sin6_scope_id = if_nametoindex(state->config.ratelimit_ifname);
+	addr.sin6_scope_id = state->communication_scope_id;
 
 	if (bind(state->communication_socket, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
 		ssr_log_errno(LOG_ERR, errno, "bind");
