@@ -126,57 +126,6 @@ func (s RateLimiterInterfaceState) GetTargetRateLimit(targetSettings []config.Ta
 	return fmt.Errorf("no target rate limit found for target %q and subtarget %q", target, subtarget), config.TargetRateLimit{}
 }
 
-func (s RateLimiterInterfaceState) updateRateAbsolute(rateDown int32, rateUp int32, reason RateLimitEventType) (error, RateLimiterInterfaceState) {
-	if rateDown < 0 && rateUp > 0 || rateDown > 0 && rateUp < 0 {
-		return fmt.Errorf("cannot update upstream and downstream rates in different directions at the same time"), s
-	}
-
-	if rateDown < 0 {
-		s.Settings.DownstreamRate = uint32(int32(s.Settings.DownstreamRate) + rateDown)
-	} else if rateDown > 0 {
-		s.Settings.DownstreamRate = uint32(int32(s.Settings.DownstreamRate) + rateDown)
-	}
-
-	if rateUp < 0 {
-		s.Settings.UpstreamRate = uint32(int32(s.Settings.UpstreamRate) + rateUp)
-	} else if rateUp > 0 {
-		s.Settings.UpstreamRate = uint32(int32(s.Settings.UpstreamRate) + rateUp)
-	}
-
-	// Check mins and max are satisfied
-	if s.Settings.DownstreamRate < s.Settings.MinDownstreamRate {
-		s.Settings.DownstreamRate = s.Settings.MinDownstreamRate
-	}
-	if s.Settings.DownstreamRate > s.Settings.MaxDownstreamRate {
-		s.Settings.DownstreamRate = s.Settings.MaxDownstreamRate
-	}
-	if s.Settings.UpstreamRate < s.Settings.MinUpstreamRate {
-		s.Settings.UpstreamRate = s.Settings.MinUpstreamRate
-	}
-	if s.Settings.UpstreamRate > s.Settings.MaxUpstreamRate {
-		s.Settings.UpstreamRate = s.Settings.MaxUpstreamRate
-	}
-
-	if rateDown < 0 || rateUp < 0 {
-		s.LastRateIncrease[reason] = time.Now()
-	} else if rateDown > 0 || rateUp > 0 {
-		s.LastRateReduction[reason] = time.Now()
-	}
-
-	return nil, s
-}
-
-func (s RateLimiterInterfaceState) updateRateRelative(percentageDown float64, percentageUp float64, reason RateLimitEventType) (error, RateLimiterInterfaceState) {
-	if percentageDown < 0 && percentageUp > 0 || percentageDown > 0 && percentageUp < 0 {
-		return fmt.Errorf("cannot update upstream and downstream rates in different directions at the same time"), s
-	}
-
-	absoluteDiffDown := int32(float64(s.Settings.DownstreamRate) * percentageDown)
-	absoluteDiffUp := int32(float64(s.Settings.UpstreamRate) * percentageUp)
-
-	return s.updateRateAbsolute(absoluteDiffDown, absoluteDiffUp, reason)
-}
-
 func (s *RateLimiterInterfaceState) UpdateClientSignaledRates() error {
 	if len(s.FromClient) == 0 {
 		return fmt.Errorf("no client messages to update rates from")
