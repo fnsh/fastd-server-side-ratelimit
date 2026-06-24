@@ -70,7 +70,7 @@ DOWNSTREAM_RATE="$(sanitize_rate "$DOWNSTREAM_RATE")"
 UPSTREAM_RATE="$(require_var FSSRL_UPSTREAM_RATE)"
 UPSTREAM_RATE="$(sanitize_rate "$UPSTREAM_RATE")"
 
-CAKE_PARAMS_SHARED="rtt regional besteffort ack-filter memlimit 256k"
+CAKE_PARAMS_SHARED="besteffort ack-filter memlimit 256k rtt 50ms"
 
 if [ "$ROLE" = "server" ]; then
 	# For server role, we shape the downstream traffic (towards clients)
