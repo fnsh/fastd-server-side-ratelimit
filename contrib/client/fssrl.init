@@ -8,7 +8,7 @@ PROG=/usr/sbin/fssrl-client
 
 start_instance() {
 	local section="$1"
-	local enabled interface script downstream_min downstream_max upstream_min upstream_max log_level target subtarget
+	local enabled interface script downstream_min downstream_max upstream_min upstream_max log_level target subtarget interval
 
 	config_get_bool enabled "$section" enabled 0
 	[ "$enabled" -eq 1 ] || return 0
@@ -20,6 +20,7 @@ start_instance() {
 	config_get upstream_min "$section" minimum_upstream "500"
 	config_get upstream_max "$section" maximum_upstream "5000"
 	config_get log_level "$section" log_level "info"
+	config_get interval "$section" interval "60"
 	config_get target "$section" target ""
 	config_get subtarget "$section" subtarget ""
 
@@ -31,6 +32,7 @@ start_instance() {
 		--upstream-min "$upstream_min" \
 		--log-syslog \
 		--log-level "$log_level" \
+		--interval "$interval" \
 		--upstream-max "$upstream_max" \
 		--target "$target" \
 		--subtarget "$subtarget"

@@ -8,6 +8,10 @@ local rate_downstream = uci:get('gluon', 'mesh_vpn', 'limit_ingress')
 local rate_upstream = uci:get('gluon', 'mesh_vpn', 'limit_egress')
 
 if not limit_enabled then
+	uci:delete('network', 'mesh_vpn_fssrl')
+	uci:delete('fssrl', 'vpn')
+	uci:save('network')
+	uci:save('fssrl')
 	return
 end
 
