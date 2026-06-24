@@ -97,16 +97,6 @@ int ssr_update_system_state(struct ssr_state *state)
 
 int ssr_validate_config(struct ssr_config *config)
 {
-	if (!config->downstream_min) {
-		ssr_log(LOG_WARNING, "Downstream min not set - Configuring to 2048 kbps");
-		config->downstream_min = 2048;
-	}
-
-	if (!config->upstream_min) {
-		ssr_log(LOG_WARNING, "Upstream min not set - Configuring to 512 kbps");
-		config->upstream_min = 512;
-	}
-
 	if (config->downstream_max && config->downstream_min > config->downstream_max) {
 		ssr_log(LOG_ERR, "Downstream min cannot be greater than max");
 		return -1;
