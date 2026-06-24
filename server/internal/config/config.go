@@ -8,11 +8,11 @@ import (
 )
 
 type Config struct {
-	Bandwith        BandwithConfig             `yaml:"bandwith"`
-	ShaperScript    string                     `yaml:"shaper_script"`
-	InterfacePrefix string                     `yaml:"interface_prefix,omitempty"`
-	InterfaceSuffix string                     `yaml:"interface_suffix,omitempty"`
-	TargetLimits    map[string]TargetRateLimit `yaml:"target_limits,omitempty"`
+	Bandwith        BandwithConfig    `yaml:"bandwith"`
+	ShaperScript    string            `yaml:"shaper_script"`
+	InterfacePrefix string            `yaml:"interface_prefix,omitempty"`
+	InterfaceSuffix string            `yaml:"interface_suffix,omitempty"`
+	TargetLimits    []TargetRateLimit `yaml:"target_limits,omitempty"`
 }
 
 type BandwithConfig struct {
@@ -33,6 +33,9 @@ type TargetRateLimit struct {
 	MaxDownstreamRate uint32 `yaml:"max_downstream_rate,omitempty"`
 	MinUpstreamRate   uint32 `yaml:"min_upstream_rate,omitempty"`
 	MaxUpstreamRate   uint32 `yaml:"max_upstream_rate,omitempty"`
+
+	InitialDownstreamRate uint32 `yaml:"initial_downstream_rate,omitempty"`
+	InitialUpstreamRate   uint32 `yaml:"initial_upstream_rate,omitempty"`
 }
 
 func validate(cfg Config) error {
