@@ -243,14 +243,7 @@ func (rl *RateLimiter) initInterfaceState(ifname string) {
 			LastRateIncrease:  make(map[RateLimitEventType]time.Time),
 			LastRateReduction: make(map[RateLimitEventType]time.Time),
 
-			Settings: RateLimiterInterfaceSettings{
-				DownstreamRate:    0,
-				UpstreamRate:      0,
-				MinDownstreamRate: rl.MinDownstreamRate,
-				MinUpstreamRate:   rl.MinUpstreamRate,
-				MaxDownstreamRate: rl.MaxDownstreamRate,
-				MaxUpstreamRate:   rl.MaxUpstreamRate,
-			},
+			Settings: RateLimiterInterfaceSettings{},
 		}
 	}
 }
