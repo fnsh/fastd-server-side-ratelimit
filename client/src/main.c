@@ -170,6 +170,8 @@ int ssr_apply_rate_limit(struct ssr_state *state, uint32_t downstream_rate, uint
 		ssr_log(LOG_ERR, "apply_rate.sh failed with exit code %d", WEXITSTATUS(ret));
 		return -1;
 	}
+
+	state->rate_update_force = 0;
 	return 0;
 }
 
