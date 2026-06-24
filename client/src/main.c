@@ -176,6 +176,9 @@ int ssr_handle_received_packet(struct ssr_state *state, struct ssr_packet_v1 *pa
 
 	int update = 0;
 
+	state->downstream_target = downstream_target;
+	state->upstream_target = upstream_target;
+
 	ssr_log(LOG_DEBUG, "Received rate limit update: downstream %u kbps, upstream %u kbps", downstream_target, upstream_target);
 
 	// Check if this is within configured limits
