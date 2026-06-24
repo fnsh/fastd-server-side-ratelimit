@@ -58,12 +58,16 @@ run_tc() {
 run_cake_qdisc() {
 	dev="$1"
 	bandwidth_kbit="$2"
-	run_tc qdisc replace dev "$dev" root cake \
-		bandwidth "${bandwidth_kbit}kbit" \
-		besteffort \
-		ack-filter \
-		memlimit 256k \
-		rtt 50ms
+	if [ "$bandwidth_kbit" -gt 0 ]; then
+		run_tc qdisc replace dev "$dev" root cake \
+			bandwidth "${bandwidth_kbit}kbit" \
+			besteffort \
+			ack-filter \
+			memlimit 256k \
+			rtt 50ms
+	else
+		run_tc qdisc del dev "$dev" root || true
+	fi
 }
 
 
