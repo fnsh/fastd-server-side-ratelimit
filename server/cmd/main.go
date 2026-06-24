@@ -142,6 +142,9 @@ func handleMesage(message protocol.Message, ifi *net.Interface, pconn *ipv6.Pack
 		return fmt.Errorf("failed to clone message for response: %v", err)
 	}
 
+	fmt.Printf("Received message from interface %s: %s\n", ifi.Name, message.String())
+	fmt.Printf("Sending response to interface %s: %s\n", ifi.Name, responseMessage.String())
+
 	// Send response back to client
 	err = sendResponse(responseMessage, ifi.Name, pconn)
 	if err != nil {

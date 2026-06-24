@@ -171,9 +171,20 @@ func (s RateLimiterInterfaceState) UpdateSettings() RateLimiterInterfaceState {
 	}
 	latestMessage := s.FromClient[len(s.FromClient)-1].Message
 
-	if latestMessage.SequenceNumber == s.LastUpdateSequenceNumber {
-		return s
+	/* Update Minima and Maxima based on latest client message */
+	if latestMessage.DownstreamMin != 0 {
+		s.Settings.MinDownstreamRate = latestMessage.DownstreamMin
 	}
+	if latestMessage.UpstreamMin != 0 {
+		s.Settings.MinUpstreamRate = latestMessage.UpstreamMin
+	}
+	if latestMessage.DownstreamMax != 0 {
+		s.Settings.MaxDownstreamRate = latestMessage.DownstreamMax
+	}
+	if latestMessage.UpstreamMax != 0 {
+		s.Settings.MaxUpstreamRate = latestMessage.UpstreamMax
+	}
+
 	s.LastUpdateSequenceNumber = latestMessage.SequenceNumber
 
 	target := string(latestMessage.MachineInformation.Target[:])
@@ -199,6 +210,24 @@ func (s RateLimiterInterfaceState) UpdateSettings() RateLimiterInterfaceState {
 
 		s.Settings = newSettings
 		return s
+	}
+
+	/* Check currently set rate satisfies current constraints */
+	if s.Settings.DownstreamRate < s.Settings.MinDownstreamRate {
+		s.Settings.DownstreamRate = s.Settings.MinDownstreamRate
+		log.Printf("Updated downstream rate to %d kbps based on client message", s.Settings.DownstreamRate)
+	}
+	if s.Settings.UpstreamRate < s.Settings.MinUpstreamRate {
+		s.Settings.UpstreamRate = s.Settings.MinUpstreamRate
+		log.Printf("Updated upstream rate to %d kbps based on client message", s.Settings.UpstreamRate)
+	}
+	if s.Settings.DownstreamRate > s.Settings.MaxDownstreamRate {
+		s.Settings.DownstreamRate = s.Settings.MaxDownstreamRate
+		log.Printf("Updated downstream rate to %d kbps based on client message", s.Settings.DownstreamRate)
+	}
+	if s.Settings.UpstreamRate > s.Settings.MaxUpstreamRate {
+		s.Settings.UpstreamRate = s.Settings.MaxUpstreamRate
+		log.Printf("Updated upstream rate to %d kbps based on client message", s.Settings.UpstreamRate)
 	}
 
 	/* ToDo: Dynamic update */
