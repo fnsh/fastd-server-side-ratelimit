@@ -179,7 +179,25 @@ int ssr_handle_received_packet(struct ssr_state *state, struct ssr_packet_v1 *pa
 	state->downstream_target = downstream_target;
 	state->upstream_target = upstream_target;
 
-	ssr_log(LOG_DEBUG, "Received rate limit update: downstream %u kbps, upstream %u kbps", downstream_target, upstream_target);
+	if (packet->downstream_configured != state->last_server_packet.downstream_configured ||
+	    packet->upstream_configured != state->last_server_packet.upstream_configured) {
+		ssr_log(LOG_INFO, "Server has updated configured rates: downstream %u kbps, upstream %u kbps", ntohl(packet->downstream_configured), ntohl(packet->upstream_configured));
+	}
+
+	if (packet->downstream_target != state->last_server_packet.downstream_target ||
+	    packet->upstream_target != state->last_server_packet.upstream_target) {
+		ssr_log(LOG_INFO, "Server has updated target rates: downstream %u kbps, upstream %u kbps", ntohl(packet->downstream_target), ntohl(packet->upstream_target));
+	}
+
+	if (packet->downstream_min != state->last_server_packet.downstream_min ||
+	    packet->downstream_max != state->last_server_packet.downstream_max) {
+		ssr_log(LOG_INFO, "Server has updated downstream limits: min %u kbps, max %u kbps", ntohl(packet->downstream_min), ntohl(packet->downstream_max));
+	}
+
+	if (packet->upstream_min != state->last_server_packet.upstream_min ||
+	    packet->upstream_max != state->last_server_packet.upstream_max) {
+		ssr_log(LOG_INFO, "Server has updated upstream limits: min %u kbps, max %u kbps", ntohl(packet->upstream_min), ntohl(packet->upstream_max));
+	}
 
 	// Check if this is within configured limits
 	if (state->config.downstream_min) {
@@ -210,6 +228,9 @@ int ssr_handle_received_packet(struct ssr_state *state, struct ssr_packet_v1 *pa
 
 	state->downstream_configured = downstream_configured_new;
 	state->upstream_configured = upstream_configured_new;
+
+	/* Save the last received server packet */
+	memcpy(&state->last_server_packet, packet, sizeof(*packet));
 
 	if (update || state->rate_update_force) {
 		ssr_log(LOG_INFO, "Applying rate limit: downstream %u kbps, upstream %u kbps", downstream_target, upstream_target);

@@ -38,6 +38,8 @@ struct ssr_state {
 		char subtarget[32];
 	} system_state;
 
+	struct ssr_packet_v1 last_server_packet;
+
 	int communication_socket;
 	uint8_t communication_ok;
 	uint32_t communication_sequence_number;
