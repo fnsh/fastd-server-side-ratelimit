@@ -149,7 +149,59 @@ desired shaper settings for both upstream and downstream direction also every 15
    - Minimum rate Upstream (Client -> Server) in kbit/s (uint32_t)
    - Maximum rate Upstream (Client -> Server) in kbit/s (uint32_t)
 
-The server responds to the client with a message containing the same message format.
+##### Rate Information
+
+The rate information fields are used to determine the desired shaper settings on either side.
+The configured rate always reflects the configuration currently active on the sending side.
+
+###### Target Rate
+
+The target rate field has a different meaning on the client and server side.
+
+When sent from the client to the server, it reflects the desired shaper settings on the server side
+by the client.
+The server will use this information to determine the desired shaper settings on the server side.
+
+When sent from the server to the client, it reflects the desired shaper settings on the client side by the server.
+The client will use this information to determine the desired shaper settings on the client side.
+
+A target rate of 0 indicates that no target rate has been set by the sending side. In this case,
+the other side is free to set the shaper settings to any value within the configured minimum
+and maximum rate.
+
+###### Configured Rate
+
+Configured rate reflects the current shaper settings on the sending side. It is used by the receiving
+side to gain information about the current shaper settings on the other side of the connection.
+
+###### Minimum and Maximum Rate
+
+The minimum and maximum rate fields are used to communicate the configured minimum and maximum rates
+on the sending side to the receiving side.
+The receiving side will use this information to determine the desired shaper settings within
+the configured limits.
+
+In case neither target rate nor limits are configured on the sending side, the receiving side
+is free to set the shaper settings to any value. In case no limits are applicable, the shaper
+settings will be set to the maximum possible value or disabled completely, depending on
+the capabilities of the shaper implementation.
+
+### Shaper script
+
+In order to make the shaper configuration more flexible, the shaper is configured using a
+shell-script, where the following environment variables are set:
+
+ - `FSSRL_ROLE`: The role of the script, either `server` or `client`
+ - `FSSRL_TARGET_IF`: The target interface of the shaper settings, e.g. `mesh-vpn`
+ - `FSSRL_DOWNSTREAM_RATE`: The desired downstream rate (Server -> Client) in kbit/s
+ - `FSSRL_UPSTREAM_RATE`: The desired upstream rate (Client -> Server) in kbit/s
+
+For the rate values, a value of 0 indicates that the shaper shall be disabled. The script
+might also choose to set the shaper settings to a value of its choice, e.g. the maximum possible value, in case no limits are configured.
+
+An example script can be found in `contrib/apply-shaper.sh`. It uses the cake qdisc to
+configure the shaper settings and can be used out-of-the-box on the server as well as on
+the client side.
 
 ### Server
 
@@ -164,22 +216,6 @@ packet counters to make informed decisions about the current PPS / data-rate of 
 Based on this information, the server calculates the desired shaper settings for both upstream and downstream
 direction and sends them back to the client.
 
-#### Shaper configuration
-
-In order to make the shaper configuration more flexible, the server configures the shaper settings using a
-shell-script executed on the server side, where the following environment variables are set:
-
- - `FSSRL_TARGET_IF`: The target interface of the shaper settings, e.g. `vpn0`
- - `FSSRL_DOWNSTREAM_RATE`: The desired downstream rate (Server -> Client) in kbit/s
- - `FSSRL_UPSTREAM_RATE`: The desired upstream rate (Client -> Server) in kbit/s
- - `FSSRL_LOADAVG_1MIN`: The load average over the last 1 minute multiplied by 10
- - `FSSRL_LOADAVG_5MIN`: The load average over the last 5 minutes multiplied by 10
- - `FSSRL_LOADAVG_15MIN`: The load average over the last 15 minutes multiplied by 10
- - `FSSRL_PKTS_SENT`: Total number of packets sent from the client to the server since the last reboot
- - `FSSRL_KB_SENT`: Total number of kilobytes sent from the client to the server since the last reboot
- - `FSSRL_PKTS_RECV`: Total number of packets sent from the server to the client since the last reboot
- - `FSSRL_KB_RECV`: Total number of kilobytes sent from the server to the client since the last reboot
-
 ### Client
 
 The client receives the shaper settings from the server and applies them to the local shaper configuration.
@@ -189,6 +225,8 @@ to make informed decisions about the shaper settings.
 In similar fashion to the server, the client configures the shaper settings using a shell-script
 executed on the client side, where the following environment variables are set:
 
+ - `FSSRL_ROLE`: The role of the script, either `server` or `client`
+ - `FSSRL_TARGET_IF`: The target interface of the shaper settings, e.g. `mesh-vpn`
  - `FSSRL_DOWNSTREAM_RATE`: The desired downstream rate (Server -> Client) in kbit/s
  - `FSSRL_UPSTREAM_RATE`: The desired upstream rate (Client -> Server) in kbit/s
 
