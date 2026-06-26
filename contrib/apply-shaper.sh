@@ -67,7 +67,7 @@ run_cake_qdisc() {
 		run_tc qdisc replace dev "$dev" root cake \
 			bandwidth "${bandwidth_kbit}kbit" \
 			besteffort \
-			ack-filter \
+			no-ack-filter \
 			memlimit "$memlimit" \
 			rtt 50ms
 	else
@@ -100,11 +100,13 @@ else
 	SYSTEM_RAM="$(get_system_ram)"
 	MEMORY_LIMIT="4m"
 	if [ "$SYSTEM_RAM" -lt 64 ]; then
-		MEMORY_LIMIT="512k"
-	elif [ "$SYSTEM_RAM" -lt 128 ]; then
 		MEMORY_LIMIT="1m"
-	else
+	elif [ "$SYSTEM_RAM" -lt 128 ]; then
 		MEMORY_LIMIT="4m"
+	elif [ "$SYSTEM_RAM" -lt 256 ]; then
+		MEMORY_LIMIT="16m"
+	else
+		MEMORY_LIMIT="32m"
 	fi
 	run_cake_qdisc "$TARGET_IF" "$UPSTREAM_RATE" "$MEMORY_LIMIT"
 fi
