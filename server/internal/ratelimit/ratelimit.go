@@ -343,7 +343,7 @@ func (rl *RateLimiter) GetResponseMessage(ifname string) (protocol.Message, erro
 
 	// Remote client signaled
 	responseMessage.UpstreamCurrent = settings.UpstreamRate
-	responseMessage.UpstreamConfigured = settings.UpstreamRate
+	responseMessage.UpstreamConfigured = 0 // No Upstream shaping applied on server side for now
 
 	// Local limits
 	responseMessage.DownstreamMin = localLimits.MinDownstreamRate
