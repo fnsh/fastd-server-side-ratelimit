@@ -195,8 +195,12 @@ func TestUpdateClientSignaledRatesAppliesLatestMessage(t *testing.T) {
 		},
 	}
 
-	if err := state.UpdateClientSignaledRates(); err != nil {
+	updated, err := state.UpdateClientSignaledRates()
+	if err != nil {
 		t.Fatalf("UpdateClientSignaledRates returned error: %v", err)
+	}
+	if !updated {
+		t.Fatalf("UpdateClientSignaledRates did not update any rates")
 	}
 
 	if state.ClientLimits.MinDownstreamRate != 11 {

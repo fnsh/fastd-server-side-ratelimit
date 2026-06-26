@@ -120,28 +120,32 @@ func (s RateLimiterInterfaceState) GetTargetRateLimit(targetSettings []config.Ta
 	return fmt.Errorf("no target rate limit found for target %q and subtarget %q", target, subtarget), config.TargetRateLimit{}
 }
 
-func (s *RateLimiterInterfaceState) UpdateClientSignaledRates() error {
+func (s *RateLimiterInterfaceState) UpdateClientSignaledRates() (bool, error) {
+	updated := false
 	if len(s.FromClient) == 0 {
-		return fmt.Errorf("no client messages to update rates from")
+		return updated, fmt.Errorf("no client messages to update rates from")
 	}
 
 	latestMessage := s.FromClient[len(s.FromClient)-1].Message
 
-	/* Update Minima and Maxima based on latest client message */
-	if latestMessage.DownstreamMin != 0 {
+	if latestMessage.DownstreamMin != s.ClientLimits.MinDownstreamRate {
 		s.ClientLimits.MinDownstreamRate = latestMessage.DownstreamMin
+		updated = true
 	}
-	if latestMessage.UpstreamMin != 0 {
+	if latestMessage.UpstreamMin != s.ClientLimits.MinUpstreamRate {
 		s.ClientLimits.MinUpstreamRate = latestMessage.UpstreamMin
+		updated = true
 	}
-	if latestMessage.DownstreamMax != 0 {
+	if latestMessage.DownstreamMax != s.ClientLimits.MaxDownstreamRate {
 		s.ClientLimits.MaxDownstreamRate = latestMessage.DownstreamMax
+		updated = true
 	}
-	if latestMessage.UpstreamMax != 0 {
+	if latestMessage.UpstreamMax != s.ClientLimits.MaxUpstreamRate {
 		s.ClientLimits.MaxUpstreamRate = latestMessage.UpstreamMax
+		updated = true
 	}
 
-	return nil
+	return updated, nil
 }
 
 func (s RateLimiterInterfaceState) GetTargetAndSubtarget() (string, string) {
@@ -163,7 +167,7 @@ func (s RateLimiterInterfaceState) UpdateSettings(targetSettings []config.Target
 	latestMessage := s.FromClient[len(s.FromClient)-1].Message
 
 	/* Update Client Signaled Rates to set Min/Max values */
-	s.UpdateClientSignaledRates()
+	updated, _ := s.UpdateClientSignaledRates()
 
 	/* Update Local Limits based on target/subtarget settings */
 	targetErr, targetLimit := s.GetTargetRateLimit(targetSettings)
@@ -177,7 +181,13 @@ func (s RateLimiterInterfaceState) UpdateSettings(targetSettings []config.Target
 	s.LastUpdateSequenceNumber = latestMessage.SequenceNumber
 
 	/* Determine starting point. */
-	if s.Settings.DownstreamRate == 0 && s.Settings.UpstreamRate == 0 {
+	if (s.Settings.DownstreamRate == 0 && s.Settings.UpstreamRate == 0) || updated {
+		/* In the update case, we might have old limits configured.
+		 * Set to 0 here to indicate shaper shall be disabled if defaults are not set.
+		 */
+		s.Settings.DownstreamRate = 0
+		s.Settings.UpstreamRate = 0
+
 		/* By default, use the target/subtarget defaults if available, otherwise use the client signaled rates. */
 		if targetErr == nil {
 			s.Settings.DownstreamRate = targetLimit.InitialDownstreamRate
