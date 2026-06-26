@@ -54,49 +54,6 @@ We need to determine the target rate for both upstream and downstream on a numbe
 The user can set their upper limits for both upstream and downstream in the configuration of the node.
 The server takes these values into account as the upper ceilings for the shaper settings.
 
-### Minimum rate
-
-In order to prevent the connection from being completely unusable, a minimum rate for both upstream and
-downstream direction is configured by the server. This limit is currently set to 6192 kbit/s for downstream
-and 1536 kbit/s for upstream.
-
-These values can be overridden by the user in the configuration of the node, as they are communicated to
-the server as part of the regular updates.
-
-### System load
-
-We need to take the system load into account. Contrary to a limit of the available throughput capacity,
-we need to evaluate the sum of up and downstream traffic. This is due to the fact we are limited by the PPS throughput
-on the CPU.
-
-There will be some discrepancy between these two, as SKB enlargements in the kernel and their expense might
-differ from upstream compared to downstream direction.
-
-In case the 1 Minute system load average exceeds number of CPU cores by a factor of 1.5, the server will reduce
-the shaper settings by 20% of the total throughput proportional in up and downstream to the current limits in order to
-prevent further load on the CPU.
-
-### Throughput capacity
-
-Throughput capacity is the attainable data rate of the connection.
-
-In theory we could do a Speedtest to determine the attainable data rate of the connection, but this
-would put unnecessary load on the connection.
-
-Instead, the node communicates the total number of packets and bytes sent in both directions since the
-last reboot to the server.
-
-The server gathers this information on his side as well. It will regularly calculate the loss rate of the
-connection within the last 60 seconds. In case the loss rate is above 3% in either direction, the server
-will reduce the shaper settings by loss-rate * 2 to prevent further packet loss.
-
-In case the loss rate is below 1% in either directions and the currently utilized bandwith is exceeding 80% of
-the configured shaper settings, the server will increase the shaper settings by 5% to allow for better
-utilization of the connection.
-
-This is a simple heuristic to determine the attainable data rate of the connection without putting unnecessary
-load on the connection itself.
-
 ### Protocol
 
 The protocol is UDP based. The server is the authorative instance of the shaper settings.
