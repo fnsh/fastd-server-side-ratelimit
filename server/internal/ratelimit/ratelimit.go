@@ -183,25 +183,33 @@ func (s RateLimiterInterfaceState) UpdateSettings(targetSettings []config.Target
 			s.Settings.DownstreamRate = targetLimit.InitialDownstreamRate
 			s.Settings.UpstreamRate = targetLimit.InitialUpstreamRate
 		}
-
-		/* Check if client has upper limits set, and if so, use them as starting point. */
-		if s.ClientLimits.MaxDownstreamRate > 0 {
-			s.Settings.DownstreamRate = s.ClientLimits.MaxDownstreamRate
-		}
-		if s.ClientLimits.MaxUpstreamRate > 0 {
-			s.Settings.UpstreamRate = s.ClientLimits.MaxUpstreamRate
-		}
 	} else {
 		// ToDo: Dynamic rate adaption here
 	}
 
-	/* Ensure configured rates are within the min/max bounds */
+	/* Ensure the downstream shaper is adhering to the maximum downstream rate signalled by the client.
+	 * If the client maximum rate undercuts our minimum rate, the server will later configure the local
+	 * minimum rate.
+	 */
+	if s.ClientLimits.MaxDownstreamRate > 0 {
+		s.Settings.DownstreamRate = s.ClientLimits.MaxDownstreamRate
+	}
+	/* This might become useful in the future in case we limit upstream rate on server optionally.
+	 * For now, this is a no-op.
+	 */
+	if s.ClientLimits.MaxUpstreamRate > 0 {
+		s.Settings.UpstreamRate = s.ClientLimits.MaxUpstreamRate
+	}
+
+	/* Enforce Limits configured on server side. */
 	if s.Settings.DownstreamRate < s.LocalLimits.MinDownstreamRate {
 		s.Settings.DownstreamRate = s.LocalLimits.MinDownstreamRate
 	}
 	if s.LocalLimits.MaxDownstreamRate > 0 && s.Settings.DownstreamRate > s.LocalLimits.MaxDownstreamRate {
 		s.Settings.DownstreamRate = s.LocalLimits.MaxDownstreamRate
 	}
+
+	/* As above (so below), the upstream rate limiting is not used for now. */
 	if s.Settings.UpstreamRate < s.LocalLimits.MinUpstreamRate {
 		s.Settings.UpstreamRate = s.LocalLimits.MinUpstreamRate
 	}
