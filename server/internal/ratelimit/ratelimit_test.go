@@ -237,11 +237,11 @@ func TestUpdateSettingsUsesTargetDefaults(t *testing.T) {
 
 	updated := state.UpdateSettings(limits)
 
-	if updated.Settings.DownstreamRate != 123 {
-		t.Fatalf("expected downstream rate 123, got %d", updated.Settings.DownstreamRate)
+	if updated.LocalTargetRate.DownstreamRate != 123 {
+		t.Fatalf("expected downstream rate 123, got %d", updated.LocalTargetRate.DownstreamRate)
 	}
-	if updated.Settings.UpstreamRate != 456 {
-		t.Fatalf("expected upstream rate 456, got %d", updated.Settings.UpstreamRate)
+	if updated.LocalTargetRate.UpstreamRate != 456 {
+		t.Fatalf("expected upstream rate 456, got %d", updated.LocalTargetRate.UpstreamRate)
 	}
 	if updated.LocalLimits.MinDownstreamRate != 100 || updated.LocalLimits.MaxDownstreamRate != 1000 {
 		t.Fatalf("unexpected downstream local limits: %+v", updated.LocalLimits)
@@ -260,7 +260,7 @@ func TestGetResponseMessageCopiesCurrentRates(t *testing.T) {
 		state: map[string]RateLimiterInterfaceState{
 			"eth0": {
 				FromClient: []RateLimiterMessage{{Message: msg}},
-				Settings: RateLimiterInterfaceSettings{
+				LocalTargetRate: RateLimiterTargetRate{
 					DownstreamRate: 321,
 					UpstreamRate:   654,
 				},

@@ -32,7 +32,7 @@ type RateLimiterInterfaceLimits struct {
 	MaxUpstreamRate   uint32
 }
 
-type RateLimiterInterfaceSettings struct {
+type RateLimiterTargetRate struct {
 	DownstreamRate uint32
 	UpstreamRate   uint32
 }
@@ -42,7 +42,7 @@ type RateLimiterInterfaceState struct {
 	FromClient []RateLimiterMessage
 	FromServer []RateLimiterMessage
 
-	Settings RateLimiterInterfaceSettings
+	LocalTargetRate RateLimiterTargetRate
 
 	LocalLimits  RateLimiterInterfaceLimits
 	ClientLimits RateLimiterInterfaceLimits
@@ -181,17 +181,17 @@ func (s RateLimiterInterfaceState) UpdateSettings(targetSettings []config.Target
 	s.LastUpdateSequenceNumber = latestMessage.SequenceNumber
 
 	/* Determine starting point. */
-	if (s.Settings.DownstreamRate == 0 && s.Settings.UpstreamRate == 0) || updated {
+	if (s.LocalTargetRate.DownstreamRate == 0 && s.LocalTargetRate.UpstreamRate == 0) || updated {
 		/* In the update case, we might have old limits configured.
 		 * Set to 0 here to indicate shaper shall be disabled if defaults are not set.
 		 */
-		s.Settings.DownstreamRate = 0
-		s.Settings.UpstreamRate = 0
+		s.LocalTargetRate.DownstreamRate = 0
+		s.LocalTargetRate.UpstreamRate = 0
 
 		/* By default, use the target/subtarget defaults if available, otherwise use the client signaled rates. */
 		if targetErr == nil {
-			s.Settings.DownstreamRate = targetLimit.InitialDownstreamRate
-			s.Settings.UpstreamRate = targetLimit.InitialUpstreamRate
+			s.LocalTargetRate.DownstreamRate = targetLimit.InitialDownstreamRate
+			s.LocalTargetRate.UpstreamRate = targetLimit.InitialUpstreamRate
 		}
 	} else {
 		// ToDo: Dynamic rate adaption here
@@ -202,29 +202,29 @@ func (s RateLimiterInterfaceState) UpdateSettings(targetSettings []config.Target
 	 * minimum rate.
 	 */
 	if s.ClientLimits.MaxDownstreamRate > 0 {
-		s.Settings.DownstreamRate = s.ClientLimits.MaxDownstreamRate
+		s.LocalTargetRate.DownstreamRate = s.ClientLimits.MaxDownstreamRate
 	}
 	/* This might become useful in the future in case we limit upstream rate on server optionally.
 	 * For now, this is a no-op.
 	 */
 	if s.ClientLimits.MaxUpstreamRate > 0 {
-		s.Settings.UpstreamRate = s.ClientLimits.MaxUpstreamRate
+		s.LocalTargetRate.UpstreamRate = s.ClientLimits.MaxUpstreamRate
 	}
 
 	/* Enforce Limits configured on server side. */
-	if s.Settings.DownstreamRate < s.LocalLimits.MinDownstreamRate {
-		s.Settings.DownstreamRate = s.LocalLimits.MinDownstreamRate
+	if s.LocalTargetRate.DownstreamRate < s.LocalLimits.MinDownstreamRate {
+		s.LocalTargetRate.DownstreamRate = s.LocalLimits.MinDownstreamRate
 	}
-	if s.LocalLimits.MaxDownstreamRate > 0 && s.Settings.DownstreamRate > s.LocalLimits.MaxDownstreamRate {
-		s.Settings.DownstreamRate = s.LocalLimits.MaxDownstreamRate
+	if s.LocalLimits.MaxDownstreamRate > 0 && s.LocalTargetRate.DownstreamRate > s.LocalLimits.MaxDownstreamRate {
+		s.LocalTargetRate.DownstreamRate = s.LocalLimits.MaxDownstreamRate
 	}
 
 	/* As above (so below), the upstream rate limiting is not used for now. */
-	if s.Settings.UpstreamRate < s.LocalLimits.MinUpstreamRate {
-		s.Settings.UpstreamRate = s.LocalLimits.MinUpstreamRate
+	if s.LocalTargetRate.UpstreamRate < s.LocalLimits.MinUpstreamRate {
+		s.LocalTargetRate.UpstreamRate = s.LocalLimits.MinUpstreamRate
 	}
-	if s.LocalLimits.MaxUpstreamRate > 0 && s.Settings.UpstreamRate > s.LocalLimits.MaxUpstreamRate {
-		s.Settings.UpstreamRate = s.LocalLimits.MaxUpstreamRate
+	if s.LocalLimits.MaxUpstreamRate > 0 && s.LocalTargetRate.UpstreamRate > s.LocalLimits.MaxUpstreamRate {
+		s.LocalTargetRate.UpstreamRate = s.LocalLimits.MaxUpstreamRate
 	}
 
 	return s
@@ -251,7 +251,7 @@ func (rl *RateLimiter) initInterfaceState(ifname string) {
 			LastRateIncrease:  make(map[RateLimitEventType]time.Time),
 			LastRateReduction: make(map[RateLimitEventType]time.Time),
 
-			Settings: RateLimiterInterfaceSettings{},
+			LocalTargetRate: RateLimiterTargetRate{},
 		}
 	}
 }
@@ -306,8 +306,8 @@ func (rl *RateLimiter) ApplyShaper(ifname string) error {
 		return fmt.Errorf("interface %q not found in rate limiter state", ifname)
 	}
 
-	downstreamRate := rl.state[ifname].Settings.DownstreamRate
-	upstreamRate := rl.state[ifname].Settings.UpstreamRate
+	downstreamRate := rl.state[ifname].LocalTargetRate.DownstreamRate
+	upstreamRate := rl.state[ifname].LocalTargetRate.UpstreamRate
 
 	// Prepare environment to execute shaper script
 	env := []string{
@@ -345,14 +345,14 @@ func (rl *RateLimiter) GetResponseMessage(ifname string) (protocol.Message, erro
 		return protocol.Message{}, fmt.Errorf("failed to clone message for response: %v", err)
 	}
 
-	settings := rl.state[ifname].Settings
+	localTargetRate := rl.state[ifname].LocalTargetRate
 	localLimits := rl.state[ifname].LocalLimits
 	// Locally applied
-	responseMessage.DownstreamCurrent = settings.DownstreamRate
-	responseMessage.DownstreamConfigured = settings.DownstreamRate
+	responseMessage.DownstreamCurrent = localTargetRate.DownstreamRate
+	responseMessage.DownstreamConfigured = localTargetRate.DownstreamRate
 
 	// Remote client signaled
-	responseMessage.UpstreamCurrent = settings.UpstreamRate
+	responseMessage.UpstreamCurrent = localTargetRate.UpstreamRate
 	responseMessage.UpstreamConfigured = 0 // No Upstream shaping applied on server side for now
 
 	// Local limits
