@@ -42,7 +42,8 @@ type RateLimiterInterfaceState struct {
 	FromClient []RateLimiterMessage
 	FromServer []RateLimiterMessage
 
-	LocalTargetRate RateLimiterTargetRate
+	LocalTargetRate  RateLimiterTargetRate
+	RemoteTargetRate RateLimiterTargetRate
 
 	LocalLimits  RateLimiterInterfaceLimits
 	ClientLimits RateLimiterInterfaceLimits
@@ -142,6 +143,14 @@ func (s *RateLimiterInterfaceState) UpdateClientSignaledRates() (bool, error) {
 	}
 	if latestMessage.UpstreamMax != s.ClientLimits.MaxUpstreamRate {
 		s.ClientLimits.MaxUpstreamRate = latestMessage.UpstreamMax
+		updated = true
+	}
+	if latestMessage.DownstreamTarget != s.RemoteTargetRate.DownstreamRate {
+		s.RemoteTargetRate.DownstreamRate = latestMessage.DownstreamTarget
+		updated = true
+	}
+	if latestMessage.UpstreamTarget != s.RemoteTargetRate.UpstreamRate {
+		s.RemoteTargetRate.UpstreamRate = latestMessage.UpstreamTarget
 		updated = true
 	}
 
