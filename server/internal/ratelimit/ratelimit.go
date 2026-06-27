@@ -37,10 +37,19 @@ type RateLimiterTargetRate struct {
 	UpstreamRate   uint32
 }
 
+type RateLimiterRemoteRequests struct {
+	DisableUpstreamShaping          bool
+	DisableUpstreamShapingApplied   bool
+	DisableDownstreamShaping        bool
+	DisableDownstreamShapingApplied bool
+}
+
 type RateLimiterInterfaceState struct {
 	Ifname     string
 	FromClient []RateLimiterMessage
 	FromServer []RateLimiterMessage
+
+	RemoteRequests RateLimiterRemoteRequests
 
 	LocalTargetRate  RateLimiterTargetRate
 	RemoteTargetRate RateLimiterTargetRate
@@ -154,6 +163,10 @@ func (s *RateLimiterInterfaceState) UpdateClientSignaledRates() (bool, error) {
 		updated = true
 	}
 
+	// Global configuration flags - Requests
+	s.RemoteRequests.DisableDownstreamShaping = (latestMessage.GlobalConfigurationFlags & (1 << 2)) != 0
+	s.RemoteRequests.DisableUpstreamShaping = (latestMessage.GlobalConfigurationFlags & (1 << 3)) != 0
+
 	return updated, nil
 }
 
@@ -206,34 +219,50 @@ func (s RateLimiterInterfaceState) UpdateSettings(targetSettings []config.Target
 		// ToDo: Dynamic rate adaption here
 	}
 
-	/* Ensure the downstream shaper is adhering to the maximum downstream rate signalled by the client.
-	 * If the client maximum rate undercuts our minimum rate, the server will later configure the local
-	 * minimum rate.
-	 */
-	if s.ClientLimits.MaxDownstreamRate > 0 {
-		s.LocalTargetRate.DownstreamRate = s.ClientLimits.MaxDownstreamRate
-	}
-	/* This might become useful in the future in case we limit upstream rate on server optionally.
-	 * For now, this is a no-op.
-	 */
-	if s.ClientLimits.MaxUpstreamRate > 0 {
-		s.LocalTargetRate.UpstreamRate = s.ClientLimits.MaxUpstreamRate
+	/* Check if client has requested to disable shaping */
+	if s.RemoteRequests.DisableDownstreamShaping {
+		s.LocalTargetRate.DownstreamRate = 0
+		s.RemoteRequests.DisableDownstreamShapingApplied = true
+	} else {
+		/* Ensure the downstream shaper is adhering to the maximum downstream rate signalled by
+		 * the client.
+		 * If the client maximum rate undercuts our minimum rate, the server will later
+		 * configure the local
+		 * minimum rate.
+		 */
+		if s.ClientLimits.MaxDownstreamRate > 0 {
+			s.LocalTargetRate.DownstreamRate = s.ClientLimits.MaxDownstreamRate
+		}
+
+		/* Enforce Limits configured on server side. */
+		if s.LocalTargetRate.DownstreamRate < s.LocalLimits.MinDownstreamRate {
+			s.LocalTargetRate.DownstreamRate = s.LocalLimits.MinDownstreamRate
+		}
+		if s.LocalLimits.MaxDownstreamRate > 0 && s.LocalTargetRate.DownstreamRate > s.LocalLimits.MaxDownstreamRate {
+			s.LocalTargetRate.DownstreamRate = s.LocalLimits.MaxDownstreamRate
+		}
+		s.RemoteRequests.DisableDownstreamShapingApplied = false
 	}
 
-	/* Enforce Limits configured on server side. */
-	if s.LocalTargetRate.DownstreamRate < s.LocalLimits.MinDownstreamRate {
-		s.LocalTargetRate.DownstreamRate = s.LocalLimits.MinDownstreamRate
-	}
-	if s.LocalLimits.MaxDownstreamRate > 0 && s.LocalTargetRate.DownstreamRate > s.LocalLimits.MaxDownstreamRate {
-		s.LocalTargetRate.DownstreamRate = s.LocalLimits.MaxDownstreamRate
-	}
+	if s.RemoteRequests.DisableUpstreamShaping {
+		s.LocalTargetRate.UpstreamRate = 0
+		s.RemoteRequests.DisableUpstreamShapingApplied = true
+	} else {
+		/* This might become useful in the future in case we limit upstream rate on server optionally.
+		 * For now, this is a no-op.
+		 */
+		if s.ClientLimits.MaxUpstreamRate > 0 {
+			s.LocalTargetRate.UpstreamRate = s.ClientLimits.MaxUpstreamRate
+		}
 
-	/* As above (so below), the upstream rate limiting is not used for now. */
-	if s.LocalTargetRate.UpstreamRate < s.LocalLimits.MinUpstreamRate {
-		s.LocalTargetRate.UpstreamRate = s.LocalLimits.MinUpstreamRate
-	}
-	if s.LocalLimits.MaxUpstreamRate > 0 && s.LocalTargetRate.UpstreamRate > s.LocalLimits.MaxUpstreamRate {
-		s.LocalTargetRate.UpstreamRate = s.LocalLimits.MaxUpstreamRate
+		/* As above (so below), the upstream rate limiting is not used for now. */
+		if s.LocalTargetRate.UpstreamRate < s.LocalLimits.MinUpstreamRate {
+			s.LocalTargetRate.UpstreamRate = s.LocalLimits.MinUpstreamRate
+		}
+		if s.LocalLimits.MaxUpstreamRate > 0 && s.LocalTargetRate.UpstreamRate > s.LocalLimits.MaxUpstreamRate {
+			s.LocalTargetRate.UpstreamRate = s.LocalLimits.MaxUpstreamRate
+		}
+		s.RemoteRequests.DisableUpstreamShapingApplied = false
 	}
 
 	return s
@@ -356,6 +385,19 @@ func (rl *RateLimiter) GetResponseMessage(ifname string) (protocol.Message, erro
 
 	localTargetRate := rl.state[ifname].LocalTargetRate
 	localLimits := rl.state[ifname].LocalLimits
+
+	responseMessage.GlobalConfigurationFlags = 0
+	// Global configuration flags - Reports
+	if localTargetRate.DownstreamRate == 0 {
+		responseMessage.GlobalConfigurationFlags |= 1 << 1 // Bit 1: Server Downstream shaping disabled
+	}
+	if localTargetRate.UpstreamRate == 0 {
+		responseMessage.GlobalConfigurationFlags |= 1 << 0 // Bit 0: Server Upstream shaping disabled
+	}
+
+	// Global configuration flags - Requests
+	// ToDo: No requests for now
+
 	// Locally applied
 	responseMessage.DownstreamTarget = localTargetRate.DownstreamRate
 	responseMessage.DownstreamConfigured = localTargetRate.DownstreamRate
