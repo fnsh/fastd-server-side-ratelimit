@@ -26,7 +26,7 @@ type MachineInformation struct {
 	Target       [32]byte
 	Subtarget    [32]byte
 	CPUCoreCount uint8
-	Reserved     [63]byte
+	Reserved     [59]byte
 }
 
 // Message is the fixed-size wire format exchanged between client and server.
@@ -34,6 +34,8 @@ type Message struct {
 	Version            uint8
 	SequenceNumber     uint32
 	MachineInformation MachineInformation
+
+	GlobalConfigurationFlags uint32
 
 	Load1        uint8
 	Load5        uint8

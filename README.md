@@ -85,7 +85,13 @@ desired shaper settings for both upstream and downstream direction also every 15
    - Target (char[32])
    - Subtarget (char[32])
    - Number of CPU cores (uint8_t)
-   - Reserved (All-Zeros) (uint8_t[63])
+   - Reserved (All-Zeros) (uint8_t[59])
+ - Global configuration flags (uint32_t)
+   - Bit 0: Server Upstream shaping disabled (Set by Client, Reported by Server)
+   - Bit 1: Server Downstream shaping disabled (Set by Client, Reported by Server)
+   - Bit 2: Client Upstream shaping disabled (Set by Server, Reported by Client)
+   - Bit 3: Client Downstream shaping disabled (Set by Server, Reported by Client)
+   - Bit 2-31: Reserved (All-Zeros)
  - System state information (Load * 10) (uint8_t[4])
    - Load average over the last 1 minute (uint8_t)
    - Load average over the last 5 minutes (uint8_t)
@@ -105,6 +111,17 @@ desired shaper settings for both upstream and downstream direction also every 15
    - Current configured rate Upstream (Client -> Server) in kbit/s (uint32_t)
    - Minimum rate Upstream (Client -> Server) in kbit/s (uint32_t)
    - Maximum rate Upstream (Client -> Server) in kbit/s (uint32_t)
+
+##### Global Configuration Flags
+
+The global configuration flags are used to signal desired shaper settings or
+report the current shaper settings.
+
+Bit [0-3] are used to signal the desired shaper settings on the other side of the connection.
+Bit [0-1] is set by the client to signal the desired shaper settings on the server side.
+Bit [2-3] is set by the server to signal the desired shaper settings on the client side.
+
+The opposite side will report the current shaper settings by setting the same bits in the response message.
 
 ##### Rate Information
 

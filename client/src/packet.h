@@ -7,13 +7,16 @@ struct ssr_packet_v1_machine_information {
 	uint8_t target[32];
 	uint8_t subtarget[32];
 	uint8_t cpu_core_count;
-	uint8_t reserved[63];
+	uint8_t reserved[59];
 } __attribute__((packed));
 
 struct ssr_packet_v1 {
 	uint8_t version;
 	uint32_t sequence_number;
+
 	struct ssr_packet_v1_machine_information machine_information;
+
+	uint32_t global_configuration_flags;
 
 	uint8_t load1;
 	uint8_t load5;
