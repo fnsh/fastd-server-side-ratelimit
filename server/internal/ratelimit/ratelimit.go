@@ -348,11 +348,11 @@ func (rl *RateLimiter) GetResponseMessage(ifname string) (protocol.Message, erro
 	localTargetRate := rl.state[ifname].LocalTargetRate
 	localLimits := rl.state[ifname].LocalLimits
 	// Locally applied
-	responseMessage.DownstreamCurrent = localTargetRate.DownstreamRate
+	responseMessage.DownstreamTarget = localTargetRate.DownstreamRate
 	responseMessage.DownstreamConfigured = localTargetRate.DownstreamRate
 
 	// Remote client signaled
-	responseMessage.UpstreamCurrent = localTargetRate.UpstreamRate
+	responseMessage.UpstreamTarget = localTargetRate.UpstreamRate
 	responseMessage.UpstreamConfigured = 0 // No Upstream shaping applied on server side for now
 
 	// Local limits

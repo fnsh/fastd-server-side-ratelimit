@@ -22,12 +22,12 @@ func TestMessageMarshalUnmarshalRoundTrip(t *testing.T) {
 	original.PktsRecv = 33
 	original.KBsRecv = 44
 
-	original.DownstreamCurrent = 100
+	original.DownstreamTarget = 100
 	original.DownstreamConfigured = 200
 	original.DownstreamMin = 300
 	original.DownstreamMax = 400
 
-	original.UpstreamCurrent = 500
+	original.UpstreamTarget = 500
 	original.UpstreamConfigured = 600
 	original.UpstreamMin = 700
 	original.UpstreamMax = 800
@@ -67,11 +67,11 @@ func TestMessageMarshalUnmarshalRoundTrip(t *testing.T) {
 	if decoded.PktsSent != original.PktsSent || decoded.KBsSent != original.KBsSent || decoded.PktsRecv != original.PktsRecv || decoded.KBsRecv != original.KBsRecv {
 		t.Fatalf("packet counters mismatch: got %v want %v", []uint64{decoded.PktsSent, decoded.KBsSent, decoded.PktsRecv, decoded.KBsRecv}, []uint64{original.PktsSent, original.KBsSent, original.PktsRecv, original.KBsRecv})
 	}
-	if decoded.DownstreamCurrent != original.DownstreamCurrent || decoded.DownstreamConfigured != original.DownstreamConfigured || decoded.DownstreamMin != original.DownstreamMin || decoded.DownstreamMax != original.DownstreamMax {
-		t.Fatalf("downstream rates mismatch: got %v want %v", []uint32{decoded.DownstreamCurrent, decoded.DownstreamConfigured, decoded.DownstreamMin, decoded.DownstreamMax}, []uint32{original.DownstreamCurrent, original.DownstreamConfigured, original.DownstreamMin, original.DownstreamMax})
+	if decoded.DownstreamTarget != original.DownstreamTarget || decoded.DownstreamConfigured != original.DownstreamConfigured || decoded.DownstreamMin != original.DownstreamMin || decoded.DownstreamMax != original.DownstreamMax {
+		t.Fatalf("downstream rates mismatch: got %v want %v", []uint32{decoded.DownstreamTarget, decoded.DownstreamConfigured, decoded.DownstreamMin, decoded.DownstreamMax}, []uint32{original.DownstreamTarget, original.DownstreamConfigured, original.DownstreamMin, original.DownstreamMax})
 	}
-	if decoded.UpstreamCurrent != original.UpstreamCurrent || decoded.UpstreamConfigured != original.UpstreamConfigured || decoded.UpstreamMin != original.UpstreamMin || decoded.UpstreamMax != original.UpstreamMax {
-		t.Fatalf("upstream rates mismatch: got %v want %v", []uint32{decoded.UpstreamCurrent, decoded.UpstreamConfigured, decoded.UpstreamMin, decoded.UpstreamMax}, []uint32{original.UpstreamCurrent, original.UpstreamConfigured, original.UpstreamMin, original.UpstreamMax})
+	if decoded.UpstreamTarget != original.UpstreamTarget || decoded.UpstreamConfigured != original.UpstreamConfigured || decoded.UpstreamMin != original.UpstreamMin || decoded.UpstreamMax != original.UpstreamMax {
+		t.Fatalf("upstream rates mismatch: got %v want %v", []uint32{decoded.UpstreamTarget, decoded.UpstreamConfigured, decoded.UpstreamMin, decoded.UpstreamMax}, []uint32{original.UpstreamTarget, original.UpstreamConfigured, original.UpstreamMin, original.UpstreamMax})
 	}
 	if !bytes.Equal(decoded.Reserved[:], original.Reserved[:]) {
 		t.Fatalf("trailing reserved mismatch")

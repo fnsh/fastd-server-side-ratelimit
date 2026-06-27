@@ -45,12 +45,12 @@ type Message struct {
 	PktsRecv uint64
 	KBsRecv  uint64
 
-	DownstreamCurrent    uint32
+	DownstreamTarget     uint32
 	DownstreamConfigured uint32
 	DownstreamMin        uint32
 	DownstreamMax        uint32
 
-	UpstreamCurrent    uint32
+	UpstreamTarget     uint32
 	UpstreamConfigured uint32
 	UpstreamMin        uint32
 	UpstreamMax        uint32
@@ -59,12 +59,12 @@ type Message struct {
 }
 
 func (m Message) String() string {
-	return fmt.Sprintf("Version=%d Seq=%d Target=%s Subtarget=%s CPUCoreCount=%d Load1=%d Load5=%d Load15=%d PktsSent=%d KBsSent=%d PktsRecv=%d KBsRecv=%d DownstreamCurrent=%d DownstreamConfigured=%d DownstreamMin=%d DownstreamMax=%d UpstreamCurrent=%d UpstreamConfigured=%d UpstreamMin=%d UpstreamMax=%d",
+	return fmt.Sprintf("Version=%d Seq=%d Target=%s Subtarget=%s CPUCoreCount=%d Load1=%d Load5=%d Load15=%d PktsSent=%d KBsSent=%d PktsRecv=%d KBsRecv=%d DownstreamTarget=%d DownstreamConfigured=%d DownstreamMin=%d DownstreamMax=%d UpstreamTarget=%d UpstreamConfigured=%d UpstreamMin=%d UpstreamMax=%d",
 		m.Version, m.SequenceNumber, string(m.MachineInformation.Target[:]), string(m.MachineInformation.Subtarget[:]), m.MachineInformation.CPUCoreCount,
 		m.Load1, m.Load5, m.Load15,
 		m.PktsSent, m.KBsSent, m.PktsRecv, m.KBsRecv,
-		m.DownstreamCurrent, m.DownstreamConfigured, m.DownstreamMin, m.DownstreamMax,
-		m.UpstreamCurrent, m.UpstreamConfigured, m.UpstreamMin, m.UpstreamMax)
+		m.DownstreamTarget, m.DownstreamConfigured, m.DownstreamMin, m.DownstreamMax,
+		m.UpstreamTarget, m.UpstreamConfigured, m.UpstreamMin, m.UpstreamMax)
 }
 
 func (m Message) Clone() (Message, error) {
@@ -123,7 +123,7 @@ func (m Message) MarshalBinary() ([]byte, error) {
 	binary.BigEndian.PutUint64(buf[offset:], m.KBsRecv)
 	offset += 8
 
-	binary.BigEndian.PutUint32(buf[offset:], m.DownstreamCurrent)
+	binary.BigEndian.PutUint32(buf[offset:], m.DownstreamTarget)
 	offset += 4
 	binary.BigEndian.PutUint32(buf[offset:], m.DownstreamConfigured)
 	offset += 4
@@ -132,7 +132,7 @@ func (m Message) MarshalBinary() ([]byte, error) {
 	binary.BigEndian.PutUint32(buf[offset:], m.DownstreamMax)
 	offset += 4
 
-	binary.BigEndian.PutUint32(buf[offset:], m.UpstreamCurrent)
+	binary.BigEndian.PutUint32(buf[offset:], m.UpstreamTarget)
 	offset += 4
 	binary.BigEndian.PutUint32(buf[offset:], m.UpstreamConfigured)
 	offset += 4
@@ -192,7 +192,7 @@ func (m *Message) UnmarshalBinary(data []byte) error {
 	m.KBsRecv = binary.BigEndian.Uint64(data[offset:])
 	offset += 8
 
-	m.DownstreamCurrent = binary.BigEndian.Uint32(data[offset:])
+	m.DownstreamTarget = binary.BigEndian.Uint32(data[offset:])
 	offset += 4
 	m.DownstreamConfigured = binary.BigEndian.Uint32(data[offset:])
 	offset += 4
@@ -201,7 +201,7 @@ func (m *Message) UnmarshalBinary(data []byte) error {
 	m.DownstreamMax = binary.BigEndian.Uint32(data[offset:])
 	offset += 4
 
-	m.UpstreamCurrent = binary.BigEndian.Uint32(data[offset:])
+	m.UpstreamTarget = binary.BigEndian.Uint32(data[offset:])
 	offset += 4
 	m.UpstreamConfigured = binary.BigEndian.Uint32(data[offset:])
 	offset += 4
