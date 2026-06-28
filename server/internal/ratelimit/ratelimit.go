@@ -230,7 +230,11 @@ func (s RateLimiterInterfaceState) UpdateSettings(targetSettings []config.Target
 		 * configure the local
 		 * minimum rate.
 		 */
-		if s.ClientLimits.MaxDownstreamRate > 0 {
+
+		if s.LocalTargetRate.DownstreamRate < s.ClientLimits.MinDownstreamRate {
+			s.LocalTargetRate.DownstreamRate = s.ClientLimits.MinDownstreamRate
+		}
+		if s.ClientLimits.MaxDownstreamRate > 0 && s.LocalTargetRate.DownstreamRate > s.ClientLimits.MaxDownstreamRate {
 			s.LocalTargetRate.DownstreamRate = s.ClientLimits.MaxDownstreamRate
 		}
 
@@ -251,7 +255,10 @@ func (s RateLimiterInterfaceState) UpdateSettings(targetSettings []config.Target
 		/* This might become useful in the future in case we limit upstream rate on server optionally.
 		 * For now, this is a no-op.
 		 */
-		if s.ClientLimits.MaxUpstreamRate > 0 {
+		if s.LocalTargetRate.UpstreamRate < s.ClientLimits.MinUpstreamRate {
+			s.LocalTargetRate.UpstreamRate = s.ClientLimits.MinUpstreamRate
+		}
+		if s.ClientLimits.MaxUpstreamRate > 0 && s.LocalTargetRate.UpstreamRate > s.ClientLimits.MaxUpstreamRate {
 			s.LocalTargetRate.UpstreamRate = s.ClientLimits.MaxUpstreamRate
 		}
 
