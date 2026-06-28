@@ -286,6 +286,7 @@ int main(int argc, char *argv[])
 
 	static struct option longopts[] = {
 		{"interface", required_argument, NULL, 'i'},
+		{"disable-shaping", required_argument, NULL, 'f'},
 		{"script", required_argument, NULL, 'p'},
 		{"target", required_argument, NULL, 't'},
 		{"subtarget", required_argument, NULL, 's'},
@@ -319,6 +320,20 @@ int main(int argc, char *argv[])
 			break;
 		case 'd':
 			state.config.upstream_max = strtoul(optarg, NULL, 10);
+			break;
+		case 'f':
+			if (strcmp(optarg, "downstream-local") == 0) {
+				state.config.disable_shaping.local.downstream = true;
+			} else if (strcmp(optarg, "upstream-local") == 0) {
+				state.config.disable_shaping.local.upstream = true;
+			} else if (strcmp(optarg, "downstream-remote") == 0) {
+				state.config.disable_shaping.remote.downstream = true;
+			} else if (strcmp(optarg, "upstream-remote") == 0) {
+				state.config.disable_shaping.remote.upstream = true;
+			} else {
+				fprintf(stderr, "Unknown disable-shaping option: %s\n", optarg);
+				return 1;
+			}
 			break;
 		case 'n':
 			state.config.interval_seconds = strtoul(optarg, NULL, 10);

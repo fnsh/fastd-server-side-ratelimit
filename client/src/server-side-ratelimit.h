@@ -3,6 +3,7 @@
 #define SERVER_SIDE_RATELIMIT_H
 
 #include <stdint.h>
+#include <stdbool.h>
 #include <time.h>
 #include "packet.h"
 
@@ -11,7 +12,19 @@
 struct ssr_config {
 	char *ratelimit_ifname;
 	char *script;
+
 	int interval_seconds;
+
+	struct {
+		struct {
+			uint32_t downstream;
+			uint32_t upstream;
+		} local;
+		struct {
+			uint32_t downstream;
+			uint32_t upstream;
+		} remote;
+	} disable_shaping;
 
 	uint32_t downstream_min;
 	uint32_t downstream_max;
