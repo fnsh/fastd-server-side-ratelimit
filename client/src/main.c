@@ -294,6 +294,18 @@ int ssr_packet_build(struct ssr_state *state, struct ssr_packet_v1 *packet)
 	packet->upstream_min = htonl(state->config.upstream_min);
 	packet->upstream_max = htonl(state->config.upstream_max);
 
+	/* Global configuration flags */
+	uint32_t global_configuration_flags = 0;
+	if (state->configured.downstream_shaping_disabled)
+		global_configuration_flags |= SSR_GCF_CLIENT_DISABLE_DOWNSTREAM_SHAPING;
+	if (state->configured.upstream_shaping_disabled)
+		global_configuration_flags |= SSR_GCF_CLIENT_DISABLE_UPSTREAM_SHAPING;
+	if (state->config.disable_shaping.remote.downstream)
+		global_configuration_flags |= SSR_GCF_SERVER_DISABLE_DOWNSTREAM_SHAPING;
+	if (state->config.disable_shaping.remote.upstream)
+		global_configuration_flags |= SSR_GCF_SERVER_DISABLE_UPSTREAM_SHAPING;
+	packet->global_configuration_flags = htonl(global_configuration_flags);
+
 	/* System state */
 	packet->load1 = state->system_state.load1;
 	packet->load5 = state->system_state.load5;
