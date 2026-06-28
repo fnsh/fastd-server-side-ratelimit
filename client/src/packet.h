@@ -3,6 +3,10 @@
 
 #include <stdint.h>
 
+#define SSR_GCF_SERVER_DISABLE_DOWNSTREAM_SHAPING 0x00000001
+#define SSR_GCF_SERVER_DISABLE_UPSTREAM_SHAPING   0x00000002
+#define SSR_GCF_CLIENT_DISABLE_DOWNSTREAM_SHAPING 0x00000004
+#define SSR_GCF_CLIENT_DISABLE_UPSTREAM_SHAPING   0x00000008
 struct ssr_packet_v1_machine_information {
 	uint8_t target[32];
 	uint8_t subtarget[32];

@@ -170,7 +170,7 @@ int ssr_handle_received_packet(struct ssr_state *state, struct ssr_packet_v1 *pa
 	// Extract Rate information and apply
 	uint32_t downstream_target = ntohl(packet->downstream_target);
 	uint32_t upstream_target = ntohl(packet->upstream_target);
-
+	uint32_t global_configuration_flags = ntohl(packet->global_configuration_flags);
 	uint32_t downstream_configured_new = downstream_target;
 	uint32_t upstream_configured_new = upstream_target;
 
@@ -178,6 +178,33 @@ int ssr_handle_received_packet(struct ssr_state *state, struct ssr_packet_v1 *pa
 
 	state->downstream_target = downstream_target;
 	state->upstream_target = upstream_target;
+
+	if (packet->global_configuration_flags != state->last_server_packet.global_configuration_flags) {
+		ssr_log(LOG_INFO, "Server has updated global configuration flags: 0x%08x", ntohl(packet->global_configuration_flags));
+
+		uint32_t changed_flags = global_configuration_flags ^ ntohl(state->last_server_packet.global_configuration_flags);
+		if (changed_flags & SSR_GCF_SERVER_DISABLE_DOWNSTREAM_SHAPING) {
+			ssr_log(LOG_INFO, "Server has %s downstream shaping",
+				(global_configuration_flags & SSR_GCF_SERVER_DISABLE_DOWNSTREAM_SHAPING) ? "disabled" : "enabled");
+		}
+
+		if (changed_flags & SSR_GCF_SERVER_DISABLE_UPSTREAM_SHAPING) {
+			ssr_log(LOG_INFO, "Server has %s upstream shaping",
+				(global_configuration_flags & SSR_GCF_SERVER_DISABLE_UPSTREAM_SHAPING) ? "disabled" : "enabled");
+		}
+
+		if (changed_flags & SSR_GCF_CLIENT_DISABLE_DOWNSTREAM_SHAPING) {
+			ssr_log(LOG_INFO, "Server requests to %s downstream shaping on client",
+				(global_configuration_flags & SSR_GCF_CLIENT_DISABLE_DOWNSTREAM_SHAPING) ? "disable" : "enable");
+			update = 1;
+		}
+
+		if (changed_flags & SSR_GCF_CLIENT_DISABLE_UPSTREAM_SHAPING) {
+			ssr_log(LOG_INFO, "Server requests to %s upstream shaping on client",
+				(global_configuration_flags & SSR_GCF_CLIENT_DISABLE_UPSTREAM_SHAPING) ? "disable" : "enable");
+			update = 1;
+		}
+	}
 
 	if (packet->downstream_configured != state->last_server_packet.downstream_configured ||
 	    packet->upstream_configured != state->last_server_packet.upstream_configured) {
@@ -199,21 +226,32 @@ int ssr_handle_received_packet(struct ssr_state *state, struct ssr_packet_v1 *pa
 		ssr_log(LOG_INFO, "Server has updated upstream limits: min %u kbps, max %u kbps", ntohl(packet->upstream_min), ntohl(packet->upstream_max));
 	}
 
-	// Check if this is within configured limits
-	if (state->config.downstream_min) {
+	if (global_configuration_flags & SSR_GCF_CLIENT_DISABLE_DOWNSTREAM_SHAPING ||
+	    state->config.disable_shaping.local.downstream) {
+		downstream_configured_new = 0;
+		state->configured.downstream_shaping_disabled = true;
+	} else if (state->config.downstream_min) {
+		// Check if this is within configured limits
 		if (downstream_configured_new < state->config.downstream_min) {
 			downstream_configured_new = state->config.downstream_min;
 		} else if (downstream_configured_new > state->config.downstream_max) {
 			downstream_configured_new = state->config.downstream_max;
 		}
+		state->configured.downstream_shaping_disabled = false;
 	}
 
-	if (state->config.upstream_min) {
+	if (global_configuration_flags & SSR_GCF_CLIENT_DISABLE_UPSTREAM_SHAPING ||
+	    state->config.disable_shaping.local.upstream) {
+		upstream_configured_new = 0;
+		state->configured.upstream_shaping_disabled = true;
+	} else if (state->config.upstream_min) {
+		// Check if this is within configured limits
 		if (upstream_configured_new < state->config.upstream_min) {
 			upstream_configured_new = state->config.upstream_min;
 		} else if (upstream_configured_new > state->config.upstream_max) {
 			upstream_configured_new = state->config.upstream_max;
 		}
+		state->configured.upstream_shaping_disabled = false;
 	}
 
 	if (state->downstream_configured != downstream_configured_new) {
@@ -370,6 +408,9 @@ int main(int argc, char *argv[])
 		ret = 1;
 		goto out;
 	}
+
+	// Disable shaping initially
+	ssr_apply_rate_limit(&state, 0, 0);
 
 	while (1) {
 		struct ssr_packet_v1 packet;

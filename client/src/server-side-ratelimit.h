@@ -65,6 +65,11 @@ struct ssr_state {
 	uint32_t downstream_configured;
 	uint32_t upstream_target;
 	uint32_t upstream_configured;
+
+	struct {
+		bool upstream_shaping_disabled;
+		bool downstream_shaping_disabled;
+	} configured;
 };
 
 int ssr_communication_send(struct ssr_state *state, struct ssr_packet_v1 *packet);
