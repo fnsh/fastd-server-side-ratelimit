@@ -277,7 +277,7 @@ func TestGetResponseMessageCopiesCurrentRates(t *testing.T) {
 	if got := getUintField(t, response, "SequenceNumber"); got != 10 {
 		t.Fatalf("expected sequence number 10, got %d", got)
 	}
-	if got := getUintField(t, response, "DownstreamTarget"); got != 321 {
+	if got := getUintField(t, response, "DownstreamConfigured"); got != 321 {
 		t.Fatalf("expected downstream current 321, got %d", got)
 	}
 	if got := getUintField(t, response, "UpstreamTarget"); got != 654 {

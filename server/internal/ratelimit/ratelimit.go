@@ -399,7 +399,7 @@ func (rl *RateLimiter) GetResponseMessage(ifname string) (protocol.Message, erro
 	// ToDo: No requests for now
 
 	// Locally applied
-	responseMessage.DownstreamTarget = localTargetRate.DownstreamRate
+	responseMessage.DownstreamTarget = 0 /* Client shall not shape Downstream, server will shape */
 	responseMessage.DownstreamConfigured = localTargetRate.DownstreamRate
 
 	// Remote client signaled

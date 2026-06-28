@@ -107,6 +107,9 @@ func (m Message) MarshalBinary() ([]byte, error) {
 	copy(buf[offset:], m.MachineInformation.Reserved[:])
 	offset += len(m.MachineInformation.Reserved)
 
+	binary.BigEndian.PutUint32(buf[offset:], m.GlobalConfigurationFlags)
+	offset += 4
+
 	buf[offset] = m.Load1
 	offset++
 	buf[offset] = m.Load5
@@ -172,6 +175,9 @@ func (m *Message) UnmarshalBinary(data []byte) error {
 	offset++
 	copy(m.MachineInformation.Reserved[:], data[offset:offset+len(m.MachineInformation.Reserved)])
 	offset += len(m.MachineInformation.Reserved)
+
+	m.GlobalConfigurationFlags = binary.BigEndian.Uint32(data[offset:])
+	offset += 4
 
 	if offset+4 > len(data) {
 		return fmt.Errorf("protocol: truncated")
