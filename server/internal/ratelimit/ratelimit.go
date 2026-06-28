@@ -100,7 +100,7 @@ func (s RateLimiterInterfaceState) AddMessage(msg protocol.Message, fromClient b
 func (s RateLimiterInterfaceState) MatchTargetLimit(targetSettings []config.TargetRateLimit, target string, subtarget string) (error, config.TargetRateLimit) {
 	for _, ts := range targetSettings {
 		if ts.Target == target {
-			if ts.Subtarget == "" || ts.Subtarget == subtarget {
+			if ts.Subtarget == subtarget {
 				return nil, ts
 			}
 		}
