@@ -271,7 +271,7 @@ int ssr_handle_received_packet(struct ssr_state *state, struct ssr_packet_v1 *pa
 	memcpy(&state->last_server_packet, packet, sizeof(*packet));
 
 	if (update || state->rate_update_force) {
-		ssr_log(LOG_INFO, "Applying rate limit: downstream %u kbps, upstream %u kbps", downstream_target, upstream_target);
+		ssr_log(LOG_INFO, "Applying rate limit: downstream %u kbps, upstream %u kbps", downstream_configured_new, upstream_configured_new);
 		return ssr_apply_rate_limit(state, downstream_configured_new, upstream_configured_new);
 	}
 
