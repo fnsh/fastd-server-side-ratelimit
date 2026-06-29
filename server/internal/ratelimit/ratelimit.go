@@ -164,8 +164,17 @@ func (s *RateLimiterInterfaceState) UpdateClientSignaledRates() (bool, error) {
 	}
 
 	// Global configuration flags - Requests
-	s.RemoteRequests.DisableDownstreamShaping = (latestMessage.GlobalConfigurationFlags & (1 << 2)) != 0
-	s.RemoteRequests.DisableUpstreamShaping = (latestMessage.GlobalConfigurationFlags & (1 << 3)) != 0
+	downShapingRequested := (latestMessage.GlobalConfigurationFlags & (1 << 0)) != 0
+	upShapingRequested := (latestMessage.GlobalConfigurationFlags & (1 << 1)) != 0
+
+	if downShapingRequested != s.RemoteRequests.DisableDownstreamShaping {
+		s.RemoteRequests.DisableDownstreamShaping = downShapingRequested
+		updated = true
+	}
+	if upShapingRequested != s.RemoteRequests.DisableUpstreamShaping {
+		s.RemoteRequests.DisableUpstreamShaping = upShapingRequested
+		updated = true
+	}
 
 	return updated, nil
 }
