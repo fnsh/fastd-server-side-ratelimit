@@ -180,18 +180,13 @@ int ssr_handle_received_packet(struct ssr_state *state, struct ssr_packet_v1 *pa
 	state->upstream_target = upstream_target;
 
 	if (packet->global_configuration_flags != state->last_server_packet.global_configuration_flags) {
-		ssr_log(LOG_INFO, "Server has updated global configuration flags: 0x%08x", ntohl(packet->global_configuration_flags));
+		ssr_log(LOG_INFO, "Server has updated global configuration flags: server-upstream-shaping %s, server-downstream-shaping %s, client-upstream-shaping %s, client-downstream-shaping %s",
+			(global_configuration_flags & SSR_GCF_SERVER_DISABLE_UPSTREAM_SHAPING) ? "disabled" : "enabled",
+			(global_configuration_flags & SSR_GCF_SERVER_DISABLE_DOWNSTREAM_SHAPING) ? "disabled" : "enabled",
+			(global_configuration_flags & SSR_GCF_CLIENT_DISABLE_UPSTREAM_SHAPING) ? "disabled" : "enabled",
+			(global_configuration_flags & SSR_GCF_CLIENT_DISABLE_DOWNSTREAM_SHAPING) ? "disabled" : "enabled");
 
 		uint32_t changed_flags = global_configuration_flags ^ ntohl(state->last_server_packet.global_configuration_flags);
-		if (changed_flags & SSR_GCF_SERVER_DISABLE_DOWNSTREAM_SHAPING) {
-			ssr_log(LOG_INFO, "Server has %s downstream shaping",
-				(global_configuration_flags & SSR_GCF_SERVER_DISABLE_DOWNSTREAM_SHAPING) ? "disabled" : "enabled");
-		}
-
-		if (changed_flags & SSR_GCF_SERVER_DISABLE_UPSTREAM_SHAPING) {
-			ssr_log(LOG_INFO, "Server has %s upstream shaping",
-				(global_configuration_flags & SSR_GCF_SERVER_DISABLE_UPSTREAM_SHAPING) ? "disabled" : "enabled");
-		}
 
 		if (changed_flags & SSR_GCF_CLIENT_DISABLE_DOWNSTREAM_SHAPING) {
 			ssr_log(LOG_INFO, "Server requests to %s downstream shaping on client",
