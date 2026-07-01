@@ -367,13 +367,13 @@ int main(int argc, char *argv[])
 			state.config.upstream_max = strtoul(optarg, NULL, 10);
 			break;
 		case 'f':
-			if (strcmp(optarg, "downstream-local") == 0) {
+			if (strcmp(optarg, "local-downstream") == 0) {
 				state.config.disable_shaping.local.downstream = true;
-			} else if (strcmp(optarg, "upstream-local") == 0) {
+			} else if (strcmp(optarg, "local-upstream") == 0) {
 				state.config.disable_shaping.local.upstream = true;
-			} else if (strcmp(optarg, "downstream-remote") == 0) {
+			} else if (strcmp(optarg, "remote-downstream") == 0) {
 				state.config.disable_shaping.remote.downstream = true;
-			} else if (strcmp(optarg, "upstream-remote") == 0) {
+			} else if (strcmp(optarg, "remote-upstream") == 0) {
 				state.config.disable_shaping.remote.upstream = true;
 			} else {
 				fprintf(stderr, "Unknown disable-shaping option: %s\n", optarg);
