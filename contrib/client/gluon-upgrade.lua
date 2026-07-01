@@ -17,6 +17,9 @@ end
 uci:delete('simple-tc', 'mesh_vpn')
 uci:delete('sqm', 'mesh_vpn')
 
+-- Reset fssrl rules
+uci:delete('fssrl', 'vpn')
+
 -- Add IPv6 LL to mesh-vpn interface
 uci:section('network', 'interface', 'mesh_vpn_fssrl', {
 	ifname = 'mesh-vpn',
