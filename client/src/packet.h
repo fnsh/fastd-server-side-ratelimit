@@ -11,7 +11,8 @@ struct ssr_packet_v1_machine_information {
 	uint8_t target[32];
 	uint8_t subtarget[32];
 	uint8_t cpu_core_count;
-	uint8_t reserved[59];
+	uint8_t model_name[32];
+	uint8_t reserved[27];
 } __attribute__((packed));
 
 struct ssr_packet_v1 {

@@ -26,7 +26,8 @@ type MachineInformation struct {
 	Target       [32]byte
 	Subtarget    [32]byte
 	CPUCoreCount uint8
-	Reserved     [59]byte
+	ModelName    [32]byte
+	Reserved     [27]byte
 }
 
 // Message is the fixed-size wire format exchanged between client and server.
@@ -104,6 +105,8 @@ func (m Message) MarshalBinary() ([]byte, error) {
 	offset += len(m.MachineInformation.Subtarget)
 	buf[offset] = m.MachineInformation.CPUCoreCount
 	offset++
+	copy(buf[offset:], m.MachineInformation.ModelName[:])
+	offset += len(m.MachineInformation.ModelName)
 	copy(buf[offset:], m.MachineInformation.Reserved[:])
 	offset += len(m.MachineInformation.Reserved)
 
@@ -173,6 +176,8 @@ func (m *Message) UnmarshalBinary(data []byte) error {
 	offset += len(m.MachineInformation.Subtarget)
 	m.MachineInformation.CPUCoreCount = data[offset]
 	offset++
+	copy(m.MachineInformation.ModelName[:], data[offset:offset+len(m.MachineInformation.ModelName)])
+	offset += len(m.MachineInformation.ModelName)
 	copy(m.MachineInformation.Reserved[:], data[offset:offset+len(m.MachineInformation.Reserved)])
 	offset += len(m.MachineInformation.Reserved)
 
