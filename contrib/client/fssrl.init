@@ -32,6 +32,7 @@ start_instance() {
 	config_get interval "$section" interval "60"
 	config_get target "$section" target ""
 	config_get subtarget "$section" subtarget ""
+	config_get model_name "$section" model_name "unknown"
 	config_list_foreach "$section" disable_shaping disable_shaping
 
 	procd_open_instance "$section"

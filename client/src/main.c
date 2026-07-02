@@ -312,6 +312,8 @@ int ssr_packet_build(struct ssr_state *state, struct ssr_packet_v1 *packet)
 	packet->machine_information.target[sizeof(packet->machine_information.target) - 1] = '\0';
 	strncpy(packet->machine_information.subtarget, state->system_state.subtarget, sizeof(packet->machine_information.subtarget) - 1);
 	packet->machine_information.subtarget[sizeof(packet->machine_information.subtarget) - 1] = '\0';
+	strncpy(packet->machine_information.model_name, state->system_state.model_name, sizeof(packet->machine_information.model_name) - 1);
+	packet->machine_information.model_name[sizeof(packet->machine_information.model_name) - 1] = '\0';
 
 	/* Network statistics */
 	packet->pkts_sent = htobe64(state->system_state.pkts_sent);
@@ -335,6 +337,7 @@ int main(int argc, char *argv[])
 		{"script", required_argument, NULL, 'p'},
 		{"target", required_argument, NULL, 't'},
 		{"subtarget", required_argument, NULL, 's'},
+		{"model-name", required_argument, NULL, 'm'},
 		{"downstream-min", required_argument, NULL, 'a'},
 		{"downstream-max", required_argument, NULL, 'b'},
 		{"upstream-min", required_argument, NULL, 'c'},
@@ -379,6 +382,10 @@ int main(int argc, char *argv[])
 				fprintf(stderr, "Unknown disable-shaping option: %s\n", optarg);
 				return 1;
 			}
+			break;
+		case 'm':
+			strncpy(state.system_state.model_name, optarg, sizeof(state.system_state.model_name) - 1);
+			state.system_state.model_name[sizeof(state.system_state.model_name) - 1] = '\0';
 			break;
 		case 'n':
 			state.config.interval_seconds = strtoul(optarg, NULL, 10);

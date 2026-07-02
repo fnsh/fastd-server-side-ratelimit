@@ -49,6 +49,7 @@ struct ssr_state {
 		uint8_t cpu_count;
 		char target[32];
 		char subtarget[32];
+		char model_name[32];
 	} system_state;
 
 	struct ssr_packet_v1 last_server_packet;
