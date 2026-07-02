@@ -31,13 +31,14 @@ uci:set_list('network', 'mesh_vpn_fssrl', 'ip6addr', {'fe80::f421:d:2/64'})
 uci:section('fssrl', 'fssrl', 'vpn', {
 	enabled = '1',
 	interface = 'mesh-vpn',
-	minimum_downstream = rate_downstream,
-	minimum_upstream = rate_upstream,
+	minimum_downstream = 0,
+	minimum_upstream = 0,
 	maximum_downstream = rate_downstream,
 	maximum_upstream = rate_upstream,
 	script = '/usr/share/fssrl/apply-rate-limit.sh',
 	target = platform.get_target(),
 	subtarget = platform.get_subtarget(),
+	model_name = platform.get_board_name(),
 })
 
 uci:save('network')
